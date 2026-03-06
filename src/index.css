@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  --color-duoc-blue: #002855;
+  --color-duoc-yellow: #F2A900;
+  --color-duoc-blue-light: #0055A5;
+  --color-duoc-yellow-dark: #CC8E00;
+  --color-duoc-yellow-light: #FFC94D;
+  --color-duoc-bg-dark: #001530;
+}
+
+/* Base Reset & Typography */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background-color: #F8F9FA;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--color-duoc-blue);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Custom Keyframes for Tailwind Arbitrary Values */
+@keyframes voiceBar {
+
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scanLine {
+
+  0%,
+  100% {
+    top: 10%;
+    opacity: 0;
+  }
+
+  10%,
+  90% {
+    opacity: 1;
+  }
+
+  50% {
+    top: 90%;
+    opacity: 1;
+  }
+}
+
+/* =========================================
+   ACCESSIBILITY OVERRIDES
+   ========================================= */
+
+/* High Contrast: Enforce solid black bg and white/yellow text */
+.access-highContrast {
+  background: #000000 !important;
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+.access-highContrast * {
+  border-color: #FFFFFF !important;
+}
+
+/* Large Text: Scale up all fonts */
+.access-largeText * {
+  font-size: 110% !important;
+  line-height: 1.5 !important;
+}
+
+/* Text Spacing: Increase letter and word spacing */
+.access-textSpacing * {
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+}
+
+/* Stop Animations: Disable CSS transitions and animations */
+.access-stopAnimations * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Hide Images/Videos (except Avatar which is essential, maybe) */
+.access-hideImages img,
+.access-hideImages svg {
+  display: none !important;
+}
+
+/* Dyslexia Font: Fallback stack for readable fonts */
+.access-dyslexiaFont * {
+  font-family: 'Comic Sans MS', 'OpenDyslexic', 'Arial', sans-serif !important;
+}

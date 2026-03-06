@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+dist/
+push_clean.log
+push_fails.log
+push_fails.txt
+push_fails2.log
+push3.log
+push.log
+push_error.txt

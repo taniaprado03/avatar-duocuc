@@ -1,0 +1,101 @@
+# DUOC UC Kiosk Application — Implementation Plan
+
+Complete React + Vite self-service kiosk with virtual avatar "Leonor", state machine, Web Speech API STT, Claude API integration, accessible mode, and session management.
+
+## Proposed Changes
+
+### Scaffolding
+
+#### [NEW] Project init via `npx create-vite`
+Initialize React + Vite in existing directory, install dependencies.
+
+#### [NEW] [.env.example](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/.env.example)
+Template with `VITE_CLAUDE_API_KEY=tu_api_key_aqui`.
+
+---
+
+### Constants
+
+#### [NEW] [videos.js](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/constants/videos.js)
+Map of state → video path for all 11 `.mp4` files.
+
+#### [NEW] [tramites.js](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/constants/tramites.js)
+Array of 4 trámites (certificado alumno regular, horario académico, progreso académico, situación financiera) with id, name, description, simulated result string.
+
+---
+
+### State Machine
+
+#### [NEW] [totemMachine.js](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/machines/totemMachine.js)
+Pure JS state machine (no XState). States: `IDLE → WELCOME → LOGIN → MENU → CONFIRMING → EXECUTING → RESULT → GOODBYE`. Transition function `transition(state, event)` returns new state + context. Handles retry logic, asesor derivation, and `accionesExitosas` threshold.
+
+---
+
+### Services
+
+#### [NEW] [claudeService.js](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/services/claudeService.js)
+`mapVoiceToOption(transcript)` → calls Anthropic API via fetch with system prompt to map spoken text to option 0-4. Returns number or `null` on failure.
+
+---
+
+### Hooks
+
+#### [NEW] [useSpeech.js](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/hooks/useSpeech.js)
+Uses `webkitSpeechRecognition` / `SpeechRecognition`. Exposes `{ transcript, isListening, startListening, stopListening, resetTranscript }`.
+
+#### [NEW] [useSession.js](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/hooks/useSession.js)
+Manages `accionesExitosas`, `reintentosBio`, `modoAccesible`, and 120s inactivity timer that resets on interaction.
+
+---
+
+### Components
+
+| Component | Purpose |
+|---|---|
+| [VideoAvatar.jsx](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/components/VideoAvatar.jsx) | Plays video by current state; hidden in accessible mode |
+| [BiometricLogin.jsx](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/components/BiometricLogin.jsx) | Simulated login with Éxito/Fallar buttons |
+| [MainMenu.jsx](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/components/MainMenu.jsx) | Menu with 5 option buttons + voice input |
+| [AccessibleMode.jsx](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/components/AccessibleMode.jsx) | Subtitle overlay, large buttons, no voice |
+| [SessionTimer.jsx](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/components/SessionTimer.jsx) | Countdown bar for 120s timeout |
+
+---
+
+### App Shell & Styling
+
+#### [NEW] [App.jsx](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/App.jsx)
+Orchestrator: uses state machine + hooks, renders correct component per state.
+
+#### [NEW] [index.css](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/src/index.css)
+Kiosk dark theme: dark gradient background, centered layout, large fonts (Inter from Google Fonts), glassmorphism panels, smooth transitions, vibrant DUOC UC accent colors (gold/amber + blue).
+
+---
+
+### Documentation
+
+#### [NEW] [README.md](file:///c:/Users/tania/OneDrive%20-%20Fundacion%20Instituto%20Profesional%20Duoc%20UC/Escritorio/avatar-duocuc/README.md)
+Installation steps, API key setup, how to add videos, run dev server.
+
+---
+
+### Placeholder Videos
+
+Create empty placeholder files in `public/videos/` so the app doesn't crash. The user will replace them with real `.mp4` files.
+
+## Verification Plan
+
+### Automated — Dev Server
+```bash
+npm run dev
+```
+Confirm app compiles and opens without errors.
+
+### Manual — Browser Walkthrough
+1. Open `http://localhost:5173`
+2. Click **"Detectar usuario"** → verify transition to WELCOME with video
+3. Click **Iniciar** → verify LOGIN screen with Éxito/Fallar buttons
+4. Click **Fallar** twice → verify asesor prompt appears
+5. Click **Éxito** → verify MENU appears with options 0-4
+6. Click option 1 → verify CONFIRMING screen, click Sí → verify EXECUTING → RESULT
+7. Click "No" on "¿Algo más?" → verify GOODBYE → IDLE
+8. Test **Accesibilidad** mode: re-enter, click Accesibilidad → verify no video, large buttons, subtitles
+9. Verify timeout: wait 2 min in any waiting state → verify return to IDLE
