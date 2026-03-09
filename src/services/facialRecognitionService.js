@@ -102,7 +102,7 @@ export async function analyzeFace(videoElement) {
         // 1. Extraer el rostro usando TinyFaceDetector
         const detection = await faceapi.detectSingleFace(
             videoElement,
-            new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+            new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.3 })
         ).withFaceLandmarks().withFaceDescriptor();
 
         if (!detection) {

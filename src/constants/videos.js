@@ -10,7 +10,10 @@ const VIDEOS = {
     ASESOR: '/videos/derivar_asesor.mp4',
     GOODBYE: '/videos/despedida.mp4',
     INACTIVITY: '/videos/inactividad.mp4',
-    NO_ENTENDI: '/videos/no_entendi.mp4'
+    NO_ENTENDI: '/videos/no_entendi.mp4',
+    PROCESANDO: '/videos/procesando.mp4',
+    LIMITE_TRAMITES: '/videos/limite_tramites.mp4',
+    IDLE: '/videos/reposo_deteccion.mp4',
 };
 
 export default VIDEOS;

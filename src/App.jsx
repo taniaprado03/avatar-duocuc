@@ -9,6 +9,8 @@ import { startCamera, stopCamera } from './services/facialRecognitionService';
 import { sendTicketEmail } from './services/emailService';
 import VIDEOS from './constants/videos';
 import TRAMITES from './constants/tramites';
+
+import SeamlessLoopVideo from './components/SeamlessLoopVideo';
 import VideoAvatar from './components/VideoAvatar';
 import BiometricLogin from './components/BiometricLogin';
 import MainMenu from './components/MainMenu';
@@ -27,7 +29,7 @@ import {
    SUBTÍTULOS EXACTOS
    ═══════════════════════════════════════════════════ */
 const SUBTITLES = {
-    WELCOME: 'Hola, bienvenido a DUOC UC. Soy Leonor. Di hola para interactuar por voz, presiona Iniciar para usar la pantalla, o di accesibilidad o presiona el botón para personalizar tu experiencia.',
+    WELCOME: 'Hola, bienvenido a DUOC UC. Soy LeonorIA. Di hola para interactuar por voz, presiona Iniciar para interactuar por pantalla, o di accesibilidad o presiona el botón para adaptar tu experiencia.',
     LOGIN: 'Por favor mira directamente a la cámara para validar tu identidad.',
     LOGIN_SUCCESS: 'Identidad validada.',
     LOGIN_FAIL: 'No pude validar tu identidad. Por favor intenta de nuevo.',
@@ -40,7 +42,9 @@ const SUBTITLES = {
     NO_ENTENDI: 'No entendí tu respuesta. Por favor intenta de nuevo.',
 };
 
-function getVideoForState(state, context) {
+function getVideoForState(state, context, inputMode) {
+    if (inputMode === 'TOUCH' || inputMode === 'ACCESSIBLE') return VIDEOS.IDLE;
+
     switch (state) {
         case STATES.WELCOME: return VIDEOS.WELCOME;
         case STATES.LOGIN:
@@ -140,6 +144,7 @@ function App() {
     const [faceModelsReady, setFaceModelsReady] = useState(false);
     const [idleCameraError, setIdleCameraError] = useState(false);
     const [detectingFace, setDetectingFace] = useState(false);
+    const [autoplayBlocked, setAutoplayBlocked] = useState(false);
     const [videoEnded, setVideoEnded] = useState(false);
 
     const avatarRef = useRef(null);
@@ -207,7 +212,9 @@ function App() {
 
     function handleVideoEnded() {
         setVideoEnded(true);
-        if (currentState === STATES.GOODBYE) send({ type: EVENTS.VIDEO_ENDED });
+        if (currentState === STATES.GOODBYE || currentState === STATES.LOGIN) {
+            send({ type: EVENTS.VIDEO_ENDED });
+        }
     }
 
     /* ─── UNIFIED STT activation — fires when video ends ─── */
@@ -430,9 +437,10 @@ function App() {
                         if (cancelled) return;
                         if (idleVideoRef.current?.readyState >= 2) {
                             setDetectingFace(true);
-                            // La detección queda visual solo como tracking del círculo. 
-                            // Ya NO dispara eventos automáticos para forzar un click y desbloquear el audio.
-                            startDetection(idleVideoRef.current, () => { });
+                            startDetection(idleVideoRef.current, () => {
+                                // Cuando face-api detecta un rostro en el frame, activamos el tótem automáticamente
+                                send({ type: EVENTS.DETECT_USER });
+                            });
                         } else setTimeout(poll, 300);
                     };
                     poll();
@@ -450,7 +458,7 @@ function App() {
     /* ════════════════════════════════════════════════
        HELPERS
        ════════════════════════════════════════════════ */
-    const videoSrc = getVideoForState(currentState, context);
+    const videoSrc = getVideoForState(currentState, context, session.inputMode);
     const subtitle = getSubtitleForState(currentState, context);
 
     function renderSubtitle(text) {
@@ -458,8 +466,8 @@ function App() {
         // Hide voice-oriented subtitles in Touch and Accessible modes (button-based interaction)
         if (isTouch || isAccessible) return null;
         return (
-            <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl px-8 py-5 mb-6 shadow-[0_8px_32px_rgba(0,0,0,0.3)] text-center max-w-2xl w-full" role="status" aria-live="polite">
-                <p className="text-xl md:text-2xl text-white font-medium leading-relaxed drop-shadow-sm">{text}</p>
+            <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-[20px] px-8 py-6 mb-6 shadow-[0_8px_32px_rgba(0,0,0,0.15)] text-center max-w-2xl w-full" role="status" aria-live="polite">
+                <p className="text-[20px] md:text-[24px] text-[#111111] font-bold leading-relaxed">{text}</p>
             </div>
         );
     }
@@ -497,38 +505,31 @@ function App() {
             case STATES.WELCOME:
                 return (
                     <div className="flex flex-col items-center w-full max-w-3xl">
-                        {renderSubtitle(subtitle)}
-
-                        {/* Voice Input Prompt */}
-                        {videoEnded && speech.isListening && !session.inputMode && (
-                            <div className="mt-4 mb-8 flex items-center gap-4 bg-white border border-gray-200 px-8 py-4 rounded-full text-duoc-blue font-bold shadow-md">
-                                <div className="flex items-end gap-1 h-6">
-                                    <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
-                                    <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
-                                    <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
-                                    <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
-                                </div>
-                                <span className="text-lg">Di <strong className="text-duoc-yellow font-black text-xl">"hola"</strong> para iniciar</span>
-                            </div>
-                        )}
-                        {!videoEnded && <p className="text-gray-400 font-medium text-sm animate-pulse mt-4 mb-4">Leonor está hablando...</p>}
 
                         {/* Interactive Buttons */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-6" role="group" aria-label="Opciones de inicio">
-                            <button aria-label="Iniciar modo pantalla táctil" data-action="primary" className="col-span-1 sm:col-span-2 flex items-center justify-center gap-3 px-8 py-6 rounded-2xl bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-black text-2xl hover:scale-[1.02] transition-transform shadow-[0_8px_32px_rgba(242,169,0,0.3)] focus:outline-none focus:ring-4 focus:ring-duoc-yellow/50"
-                                onClick={() => { session.setInputMode('TOUCH'); send({ type: EVENTS.START }); }}>
-                                <Monitor size={28} /> Iniciar Touch
+                        <div className="flex flex-col gap-4 w-full mt-6 px-12">
+                            <button
+                                aria-label="Iniciar modo pantalla táctil"
+                                data-action="primary"
+                                onClick={() => { session.setInputMode('TOUCH'); send({ type: EVENTS.START }); }}
+                                className="flex items-center justify-center gap-4 w-full min-h-[64px] py-5 rounded-xl bg-white text-[#111111] font-bold text-[22px] hover:bg-gray-100 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
+                            >
+                                <Monitor size={28} className="text-[#111111]" /> Iniciar
                             </button>
-                            <button aria-label="Activar modo accesibilidad" className="flex items-center justify-center gap-3 px-6 py-5 rounded-2xl bg-gradient-to-br from-duoc-blue-light to-duoc-blue text-white font-bold text-xl hover:scale-105 transition-transform shadow-[0_8px_32px_rgba(0,85,165,0.4)] focus:outline-none focus:ring-4 focus:ring-duoc-blue/50"
-                                onClick={() => { session.setInputMode('ACCESSIBLE'); session.setModoAccesible(true); send({ type: EVENTS.ACCESSIBILITY }); }}>
-                                <Accessibility size={24} /> Accesibilidad
+                            <button
+                                aria-label="Repetir mensaje de bienvenida"
+                                onClick={() => { if (avatarRef.current) { avatarRef.current.replay(); setVideoEnded(false); speech.stopListening(); } }}
+                                className="flex items-center justify-center gap-4 w-full min-h-[64px] py-5 rounded-xl bg-white text-[#111111] font-bold text-[22px] hover:bg-gray-100 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
+                            >
+                                <RefreshCw size={28} className="text-[#111111]" /> Repetir
                             </button>
-                            <button aria-label="Repetir mensaje de bienvenida" className="flex items-center justify-center gap-2 px-6 py-5 rounded-2xl bg-white border border-gray-200 text-duoc-blue font-semibold text-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-4 focus:ring-duoc-blue/30 shadow-sm"
-                                onClick={() => { if (avatarRef.current) { avatarRef.current.replay(); setVideoEnded(false); speech.stopListening(); } }}>
-                                <RefreshCw size={22} /> Repetir
-                            </button>
-                            <button aria-label="Salir de la aplicación" data-action="back" className="col-span-1 sm:col-span-2 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-transparent border border-gray-300 text-gray-500 font-semibold text-lg hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-gray-300" onClick={() => send({ type: EVENTS.EXIT })}>
-                                <LogOut size={22} /> Salir
+                            <button
+                                aria-label="Salir de la aplicación"
+                                data-action="back"
+                                onClick={() => send({ type: EVENTS.EXIT })}
+                                className="flex items-center justify-center gap-4 w-full min-h-[64px] py-5 rounded-xl bg-white text-[#111111] font-bold text-[22px] hover:bg-gray-100 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
+                            >
+                                <LogOut size={28} className="text-[#111111]" /> Salir
                             </button>
                         </div>
                     </div>
@@ -538,15 +539,17 @@ function App() {
                 return (
                     <>
                         {subtitle && renderSubtitle(subtitle)}
-                        <BiometricLogin
-                            onSuccess={(userData) => send({ type: EVENTS.BIO_SUCCESS, userData })}
-                            onFail={() => send({ type: EVENTS.BIO_FAIL })}
-                            reintentosBio={context.reintentosBio}
-                            showAsesorPrompt={context.showAsesorPrompt}
-                            onAsesorYes={() => send({ type: EVENTS.ASESOR_YES })}
-                            onAsesorNo={() => send({ type: EVENTS.ASESOR_NO })}
-                            modoAccesible={isAccessible}
-                        />
+                        {(!context.subState || context.showAsesorPrompt) && (
+                            <BiometricLogin
+                                onSuccess={(userData) => send({ type: EVENTS.BIO_SUCCESS, userData, inputMode: session.inputMode })}
+                                onFail={() => send({ type: EVENTS.BIO_FAIL, inputMode: session.inputMode })}
+                                reintentosBio={context.reintentosBio}
+                                showAsesorPrompt={context.showAsesorPrompt}
+                                onAsesorYes={() => send({ type: EVENTS.ASESOR_YES })}
+                                onAsesorNo={() => send({ type: EVENTS.ASESOR_NO })}
+                                modoAccesible={isAccessible}
+                            />
+                        )}
                     </>
                 );
 
@@ -585,29 +588,25 @@ function App() {
                 const tramite = TRAMITES.find(t => t.id === context.selectedTramite);
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-3xl mx-auto text-center">
-                        <div className="text-duoc-blue mb-6 drop-shadow-sm"><HelpCircle size={56} /></div>
-                        <h2 className="text-4xl font-black text-duoc-blue mb-8 drop-shadow-sm">Confirmar Trámite</h2>
+                        <div className="text-duoc-yellow mb-6 drop-shadow-sm"><HelpCircle size={56} /></div>
+                        <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Confirmar Trámite</h2>
 
-                        <div className="flex flex-col md:flex-row items-center gap-6 bg-white border border-gray-200 rounded-3xl p-8 shadow-sm w-full mb-8 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-black text-3xl shrink-0 shadow-sm">
-                                {tramite?.id}
-                            </div>
-                            <div className="text-center md:text-left">
-                                <h3 className="text-2xl font-bold text-duoc-blue mb-2">{tramite?.nombre}</h3>
-                                <p className="text-gray-600 text-lg leading-relaxed">{tramite?.descripcion}</p>
-                            </div>
+                        <div className="flex flex-col items-start gap-2 bg-[#FFFFFF] border-2 border-transparent rounded-xl p-6 shadow-md w-full max-w-2xl mx-auto mb-8 hover:border-gray-300 transition-all text-left min-h-[48px]">
+                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite?.id}</span>
+                            <h3 className="text-[20px] font-bold text-[#111111] leading-tight">{tramite?.nombre}</h3>
+                            <p className="text-[16px] font-medium text-[#222222] mt-1">{tramite?.descripcion}</p>
                         </div>
 
                         {renderSubtitle(subtitle)}
                         {renderVoiceYesNo('Di "sí" o "no"')}
 
                         {!isVoice && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-4" role="group" aria-label="Confirmar o cancelar trámite">
-                                <button aria-label="Sí, confirmar trámite" data-action="primary" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white font-bold text-xl hover:scale-105 transition-transform shadow-[0_8px_25px_rgba(74,222,128,0.3)] focus:outline-none focus:ring-4 focus:ring-green-400/50" onClick={() => send({ type: EVENTS.CONFIRM_YES })}>
-                                    <CheckCircle size={24} /> Sí, continuar
+                            <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Confirmar o cancelar trámite">
+                                <button aria-label="Sí, confirmar trámite" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONFIRM_YES })}>
+                                    <CheckCircle size={32} className="text-[#111111]" /> Sí, continuar
                                 </button>
-                                <button aria-label="No, volver al menú principal" data-action="back" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-white border border-gray-300 text-gray-700 font-bold text-xl hover:bg-gray-50 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-300" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
-                                    <ArrowLeft size={24} /> No, volver al menú
+                                <button aria-label="No, volver al menú principal" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
+                                    <ArrowLeft size={32} className="text-[#111111]" /> No, volver al menú
                                 </button>
                             </div>
                         )}
@@ -620,16 +619,16 @@ function App() {
                     return (
                         <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center">
                             <div className="text-red-500 mb-6 drop-shadow-sm"><AlertTriangle size={56} /></div>
-                            <h2 className="text-4xl font-black text-duoc-blue mb-8">Error en el trámite</h2>
+                            <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Error en el trámite</h2>
                             {renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
                             {!isVoice && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-6" role="group" aria-label="Reintentar o cancelar">
-                                    <button aria-label="Sí, reintentar trámite" data-action="primary" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-bold text-xl hover:scale-105 transition-transform shadow-lg focus:outline-none focus:ring-4 focus:ring-duoc-yellow/50" onClick={() => send({ type: EVENTS.RETRY_YES })}>
-                                        <RefreshCw size={24} /> Sí, reintentar
+                                <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Reintentar o cancelar">
+                                    <button aria-label="Sí, reintentar trámite" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.RETRY_YES })}>
+                                        <RefreshCw size={32} className="text-[#111111]" /> Sí, reintentar
                                     </button>
-                                    <button aria-label="No, volver al menú" data-action="back" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-white border border-gray-300 text-gray-700 font-bold text-xl hover:bg-gray-50 transition-colors focus:outline-none focus:ring-4 focus:ring-gray-300 shadow-sm" onClick={() => send({ type: EVENTS.RETRY_NO })}>
-                                        <ArrowLeft size={24} /> No, volver al menú
+                                    <button aria-label="No, volver al menú" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.RETRY_NO })}>
+                                        <ArrowLeft size={32} className="text-[#111111]" /> No, volver al menú
                                     </button>
                                 </div>
                             )}
@@ -639,7 +638,7 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-md mx-auto text-center">
                         <div className="text-duoc-yellow-dark mb-8 animate-spin drop-shadow-sm"><Settings size={64} /></div>
-                        <h2 className="text-3xl font-black text-duoc-blue mb-10 tracking-wide">Procesando trámite...</h2>
+                        <h2 className="text-3xl font-black text-white mb-10 tracking-wide drop-shadow-md">Procesando trámite...</h2>
                         <div className="w-full flex flex-col items-center">
                             <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden border border-gray-300 mb-5 shadow-inner relative">
                                 <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-duoc-yellow-dark via-duoc-yellow to-duoc-yellow-light rounded-full w-1/2 animate-[scanLine_1.5s_ease-in-out_infinite_alternate]" style={{ transformOrigin: 'left' }} />
@@ -653,19 +652,19 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto text-center">
                         <div className="text-green-500 mb-4 drop-shadow-sm"><CheckCircle2 size={56} /></div>
-                        <h2 className="text-4xl font-black text-duoc-blue mb-8">Trámite Exitoso</h2>
+                        <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Trámite Exitoso</h2>
                         <ResultCard tramiteId={context.selectedTramite} resultado={tramiteResultText} userData={context.userData} />
 
                         <div className="mt-8 w-full max-w-2xl mx-auto">
                             {renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
                             {!isVoice && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-4" role="group" aria-label="Más trámites o finalizar">
-                                    <button aria-label="Sí, realizar otro trámite" data-action="primary" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-bold text-xl hover:scale-105 transition-transform shadow-[0_8px_25px_rgba(242,169,0,0.3)] focus:outline-none focus:ring-4 focus:ring-duoc-yellow/50" onClick={() => send({ type: EVENTS.MORE_YES })}>
-                                        <CheckCircle size={24} /> Sí, otro trámite
+                                <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Más trámites o finalizar">
+                                    <button aria-label="Sí, realizar otro trámite" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.MORE_YES })}>
+                                        <CheckCircle size={32} className="text-[#111111]" /> Sí, otro trámite
                                     </button>
-                                    <button aria-label="No, finalizar sesión" data-action="back" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-white border border-gray-300 text-gray-700 font-bold text-xl hover:bg-gray-50 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-300" onClick={() => send({ type: EVENTS.MORE_NO })}>
-                                        <Hand size={24} /> No, finalizar
+                                    <button aria-label="No, finalizar sesión" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.MORE_NO })}>
+                                        <Hand size={32} className="text-[#111111]" /> No, finalizar
                                     </button>
                                 </div>
                             )}
@@ -682,9 +681,7 @@ function App() {
             case STATES.GOODBYE:
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center">
-                        <div className="text-[5rem] font-black text-duoc-blue drop-shadow-sm tracking-tighter mb-2 animate-pulse">DUOC UC</div>
-                        <div className="text-duoc-yellow-dark mb-8 font-medium tracking-[0.3em] uppercase">Tótem de Autoservicio</div>
-                        <h2 className="text-5xl font-black text-duoc-blue mb-8">¡Gracias por tu visita!</h2>
+                        <h2 className="text-5xl font-black text-white mb-8 drop-shadow-md">Fue un placer ayudarte. ¡Hasta pronto!</h2>
                         {renderSubtitle(subtitle)}
                         {context.ticketNumber && (
                             <div className="flex flex-col items-center bg-white border border-gray-200 rounded-3xl p-10 shadow-lg w-full mb-8 relative overflow-hidden">
@@ -702,15 +699,15 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center bg-white p-12 rounded-[3rem] border border-gray-200 shadow-xl">
                         <div className="text-red-500 mb-6 drop-shadow-sm animate-pulse"><Clock size={64} /></div>
-                        <h2 className="text-5xl font-black text-duoc-blue mb-6">¿Sigues ahí?</h2>
+                        <h2 className="text-5xl font-black text-white mb-6 drop-shadow-md">¿Sigues ahí?</h2>
                         {renderSubtitle(subtitle)}
                         {renderVoiceYesNo('Di "sí" para continuar')}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-8" role="group" aria-label="Continuar o salir">
-                            <button aria-label="Sí, continuar con la sesión" data-action="primary" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 text-white font-bold text-xl hover:scale-105 transition-transform shadow-[0_8px_25px_rgba(74,222,128,0.3)] focus:outline-none focus:ring-4 focus:ring-green-400/50" onClick={() => send({ type: EVENTS.CONTINUE })}>
-                                <CheckCircle size={24} /> Sí, continuar
+                        <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Continuar o salir">
+                            <button aria-label="Sí, continuar con la sesión" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONTINUE })}>
+                                <CheckCircle size={32} className="text-[#111111]" /> Sí, continuar
                             </button>
-                            <button aria-label="No, cerrar sesión" data-action="back" className="flex items-center justify-center gap-3 px-8 py-5 rounded-2xl bg-white border border-gray-300 text-gray-700 font-bold text-xl hover:bg-gray-50 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-300" onClick={() => send({ type: EVENTS.EXIT })}>
-                                <LogOut size={24} /> No, salir
+                            <button aria-label="No, cerrar sesión" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.EXIT })}>
+                                <LogOut size={32} className="text-[#111111]" /> No, salir
                             </button>
                         </div>
                         <p className="text-gray-400 font-medium mt-8">Volviendo al inicio si no respondes...</p>
@@ -726,32 +723,57 @@ function App() {
        ════════════════════════════════════════════════ */
     if (currentState === STATES.IDLE) {
         return (
-            <div className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden bg-white z-50 text-duoc-blue" onClick={() => send({ type: EVENTS.DETECT_USER })}>
+            <div
+                className="w-[1080px] h-[1920px] overflow-hidden bg-white flex flex-col items-center justify-center relative"
+                onClick={() => send({ type: EVENTS.DETECT_USER })}
+            >
                 {!idleCameraError && (
                     <>
-                        <video ref={idleVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-multiply" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-white via-white/80 to-transparent backdrop-blur-[1px]" />
-                        {detectingFace && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] border-4 border-duoc-yellow/50 rounded-full animate-ping" />}
+                        {/* THE ACTUAL WEBCAM FEED INVISIBLE FOR TF.JS */}
+                        <video ref={idleVideoRef} autoPlay playsInline muted
+                            className="absolute opacity-0 w-[1px] h-[1px] pointer-events-none" />
+
+                        {/* Seamless Loop Video Background for IDLE */}
+                        <SeamlessLoopVideo
+                            src="/videos/reposo_deteccion.mp4"
+                            className="absolute inset-0 w-full h-full opacity-50"
+                        />
+
+                        {/* Clear gradient overlay to make text pop */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/70 to-white/95" />
+
+                        {/* Face detection radar effect */}
+                        {detectingFace && (
+                            <div className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] border-4 border-duoc-yellow/60 rounded-full animate-ping" />
+                        )}
                     </>
                 )}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 z-10">
-                    <div className="text-[7rem] md:text-[9rem] font-black text-duoc-blue drop-shadow-sm tracking-tighter mb-2">DUOC UC</div>
-                    <div className="text-xl md:text-3xl uppercase tracking-[0.4em] font-medium text-duoc-yellow-dark mb-20 drop-shadow-sm">Tótem de Autoservicio</div>
 
-                    <div className="px-12 py-6 bg-white border border-gray-200 rounded-full animate-pulse shadow-md">
-                        <span className="text-2xl md:text-4xl font-bold text-duoc-blue">
-                            Toca la pantalla para comenzar
-                        </span>
+                {/* FOREGROUND CONTENT - CENTERED */}
+                <div className="absolute top-[50%] -translate-y-[50%] left-0 right-0 z-10 flex flex-col items-center justify-center text-center px-16">
+                    {/* Official DUOC UC Logo */}
+                    <img
+                        src="/logo-duoc.png"
+                        alt="DUOC UC"
+                        className="h-[120px] object-contain mb-8"
+                        style={{ filter: 'brightness(0)' }} // Ensures the logo is black/dark
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+
+                    {/* Secondary Text in BLACK */}
+                    <div className="text-[2rem] uppercase tracking-[0.4em] font-black text-black">
+                        Tótem de Autoatención
                     </div>
 
+                    {/* Deteccing Face Indicator in BLACK */}
                     {detectingFace && (
-                        <div className="absolute bottom-16 flex items-center gap-3 text-duoc-blue border border-gray-200 font-bold text-xl bg-white px-8 py-4 rounded-full shadow-md">
-                            <span className="w-4 h-4 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                        <div className="flex items-center gap-4 border-2 border-gray-200 font-bold text-[1.6rem] text-black bg-white/90 backdrop-blur-sm px-10 py-5 rounded-full shadow-lg mt-16 transition-all duration-300">
+                            <span className="w-5 h-5 bg-green-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
                             Detectando rostro...
                         </div>
                     )}
                 </div>
-            </div>
+            </div >
         );
     }
 
@@ -770,81 +792,155 @@ function App() {
         .join(' ');
 
     return (
-        <div className={`flex flex-col portrait:flex-col landscape:flex-row h-screen w-screen overflow-hidden text-duoc-blue font-sans ${accessSettings.highContrast ? 'bg-black' : 'bg-[#F8F9FA]'} kiosk--${session.inputMode?.toLowerCase() || 'idle'} ${accessibilityClasses}`} onClick={() => session.resetTimer()}>
-
-            {/* LEFT: Avatar */}
-            {showSidePane && (
-                <div className="flex relative shrink-0 items-center justify-center overflow-hidden w-full landscape:w-[45%] h-[45%] landscape:h-full bg-transparent border-b-2 landscape:border-b-0 landscape:border-r-[1px] border-gray-200 [mask-image:linear-gradient(to_bottom,black_85%,transparent_100%)] landscape:[mask-image:linear-gradient(to_bottom,black_90%,transparent_100%)]">
-                    <div className="w-full h-full flex items-center justify-center">
-                        <VideoAvatar ref={avatarRef} src={videoSrc} onEnded={handleVideoEnded} />
-
-                        <div className="absolute bottom-6 left-0 right-0 text-center z-10 pointer-events-none">
-                            <span className="block text-lg font-bold text-duoc-yellow tracking-wider drop-shadow-md">Leonor</span>
-                            <span className="block text-[0.65rem] text-white/50 uppercase tracking-[0.15em] mt-0.5">Asistente Virtual</span>
-                        </div>
-
-                        {speech.isListening && (
-                            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-end gap-1 h-8 px-5 py-2 bg-duoc-blue/80 backdrop-blur-md rounded-full shadow-[0_0_15px_rgba(242,169,0,0.3)]">
-                                <span className="w-1 bg-duoc-yellow rounded-full animate-bounce h-[40%]" />
-                                <span className="w-1 bg-duoc-yellow rounded-full animate-bounce delay-75 h-[80%]" />
-                                <span className="w-1 bg-duoc-yellow rounded-full animate-bounce delay-150 h-[60%]" />
-                                <span className="w-1 bg-duoc-yellow rounded-full animate-bounce delay-200 h-[100%]" />
-                            </div>
-                        )}
-                    </div>
+        <div className="w-[1080px] h-[1920px] bg-black relative overflow-hidden font-sans select-none"
+            onClick={() => session.resetTimer()}
+        >
+            {/* TIMEOUT BAR */}
+            {session.timerActive && (
+                <div className="absolute top-0 left-0 right-0 h-2 z-50">
+                    <div className="h-full bg-gradient-to-r from-duoc-yellow to-red-500 transition-all duration-1000"
+                        style={{ width: `${timeoutPct}%` }} />
                 </div>
             )}
 
-            {/* RIGHT: Content */}
-            <div className={`flex flex-col relative overflow-y-auto ${!showSidePane ? 'w-full h-full bg-[#F8F9FA]' : 'w-full landscape:w-[55%] h-[55%] landscape:h-full bg-[#F8F9FA]'}`}>
+            {/* 1. VIDEO DE FONDO A PANTALLA COMPLETA */}
+            <div className="absolute inset-0 z-0 bg-black">
+                {((isTouch || isAccessible) && currentState !== STATES.WELCOME) ? (
+                    <img src="/imagen-pantalla.jpeg" alt="Fondo" className="absolute inset-0 w-full h-full object-cover z-0" />
+                ) : (
+                    <VideoAvatar
+                        ref={avatarRef}
+                        src={videoSrc}
+                        onEnded={handleVideoEnded}
+                        onPlayError={() => setAutoplayBlocked(true)}
+                    />
+                )}
+                {/* Gradiente sutil abajo para que destaquen textos blancos / botones */}
+                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+                {/* Gradiente sutil arriba para el header */}
+                <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
+            </div>
 
-                {session.timerActive && (
-                    <div className="w-full shrink-0 h-1 bg-white/5">
-                        <div className="h-full bg-gradient-to-r from-duoc-yellow to-red-500 rounded-r-sm transition-all duration-1000 ease-linear" style={{ width: `${timeoutPct}%` }} />
+            {/* 2. CAPAS FRONTALES E INTERACTIVAS */}
+            <div className={`relative z-10 w-full h-full flex flex-col justify-between transition-opacity duration-300 ${autoplayBlocked ? 'opacity-30 blur-sm pointer-events-none' : 'opacity-100'}`}>
+
+                {/* ZONA SUPERIOR - HEADER FLOTANTE */}
+                <div className="w-full px-12 pt-12 flex items-start justify-between">
+                    <div>
+                        <div className="text-[1.5rem] uppercase tracking-[0.25em] font-black text-white drop-shadow-sm">Tótem de Autoatención</div>
+                        {session.timerActive && session.timeRemaining <= 30 && (
+                            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 backdrop-blur-md text-[1rem] font-bold ${session.timeRemaining <= 15 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-black/30 text-white'}`}>
+                                <Clock size={18} /> {session.timeRemaining}s
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); session.setInputMode('ACCESSIBLE'); session.setModoAccesible(true); send({ type: EVENTS.ACCESSIBILITY }); }}
+                        className="flex items-center gap-3 px-6 py-4 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white font-bold text-[1.2rem] hover:bg-black/60 transition-colors shadow-lg"
+                        aria-label="Menú de accesibilidad"
+                    >
+                        <Accessibility size={24} /> Accesibilidad
+                    </button>
+                </div>
+
+                {/* ANIMACIÓN DE ESCUCHA (VOZ) */}
+                {speech.isListening && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+                        <div className="flex items-end gap-3 px-8 py-6 bg-black/40 backdrop-blur-xl rounded-full shadow-[0_0_50px_rgba(251,191,36,0.3)] border border-duoc-yellow/30">
+                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-8" />
+                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-14" />
+                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-10" />
+                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-16" />
+                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1.3s_ease-in-out_infinite_0.4s] h-10" />
+                        </div>
                     </div>
                 )}
 
-                <div className="shrink-0 px-8 pt-6 pb-3 text-center">
-                    <div className="text-[2.2rem] font-black tracking-tight text-duoc-blue drop-shadow-sm">DUOC UC</div>
-                    <div className="text-[0.7rem] uppercase tracking-[0.2em] font-medium text-duoc-yellow mt-1">Tótem de Autoservicio</div>
+                {/* ZONA INFERIOR - INTERACCIÓN Y CONTROLES */}
+                <div className="w-full flex-col flex justify-end pb-8">
 
-                    {session.timerActive && session.timeRemaining <= 30 && (
-                        <div className={`mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${session.timeRemaining <= 15 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-200 text-gray-700'}`}>
-                            <Clock size={14} /> {session.timeRemaining}s
+                    {/* Subtítulos */}
+                    <div className="w-full flex justify-center px-12 mb-8">
+                        {subtitle && !isTouch && !isAccessible && (
+                            <div className="w-full max-w-[800px] text-center">
+                                <p className="text-[1.5rem] font-bold text-white drop-shadow-xl leading-relaxed bg-black/50 px-8 py-6 rounded-3xl backdrop-blur-md border border-white/10">
+                                    "{subtitle}"
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Botones y Vistas dinámicas */}
+                    <div className="w-full px-12 mb-10 flex flex-col items-center">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentState}
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                transition={{ duration: 0.3 }}
+                                className="w-full flex flex-col items-center gap-5"
+                            >
+                                {isAccessible && currentState !== STATES.LOGIN && currentState !== STATES.WELCOME
+                                    ? <div className="bg-white rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200">
+                                        <AccessibleMode currentState={currentState}>{renderContent()}</AccessibleMode>
+                                    </div>
+                                    : renderContent()
+                                }
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
+
+                    {/* FOOTER - Logo fijo abajo */}
+                    <div className="w-full px-12 flex flex-col items-center justify-center opacity-90 mt-4 relative">
+                        <img
+                            src="/logo-duoc.png"
+                            alt="DUOC UC"
+                            className="h-12 object-contain"
+                            style={{ filter: 'brightness(0) invert(1)' }} // Logo en blanco
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <div className="absolute right-12 flex items-center gap-4">
+                            {session.inputMode && (
+                                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-xl text-white/90 text-[0.9rem] font-semibold border border-white/10">
+                                    {isVoice && <><Mic size={14} /> Voz</>}
+                                    {isTouch && <><Monitor size={14} /> Táctil</>}
+                                    {isAccessible && !isTouch && <><Accessibility size={14} /> Accesible</>}
+                                </span>
+                            )}
                         </div>
-                    )}
-                </div>
-
-                <div className={`flex-1 flex flex-col items-center justify-center p-6 sm:p-8 gap-5 ${isTouch ? 'max-w-[680px] mx-auto w-full' : ''}`}>
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={currentState}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -8 }}
-                            transition={{ duration: 0.25 }}
-                            className="w-full flex flex-col items-center"
-                        >
-                            {isAccessible ? (
-                                <AccessibleMode currentState={currentState}>
-                                    {renderContent()}
-                                </AccessibleMode>
-                            ) : renderContent()}
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
-
-                <div className="shrink-0 px-4 py-2 text-center text-[0.6rem] text-gray-500 border-t border-gray-200 flex flex-wrap justify-center items-center gap-3">
-                    <span>DUOC UC © 2026</span>
-                    {session.inputMode && (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-duoc-yellow/10 text-duoc-yellow-dark rounded-md font-semibold">
-                            {isVoice && <><Mic size={12} /> Voz</>}
-                            {isTouch && <><Monitor size={12} /> Pantalla</>}
-                            {isAccessible && !isTouch && <><Accessibility size={12} /> Accesible</>}
-                        </span>
-                    )}
+                    </div>
                 </div>
             </div>
+
+            {/* OVERLAY: CHROME AUTOPLAY BLOCKED */}
+            <AnimatePresence>
+                {autoplayBlocked && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => {
+                            setAutoplayBlocked(false);
+                            if (avatarRef.current) {
+                                avatarRef.current.replay();
+                                setVideoEnded(false);
+                            }
+                        }}
+                        className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md cursor-pointer"
+                    >
+                        <div className="bg-white/10 border border-white/20 p-12 rounded-[3rem] flex flex-col items-center text-center max-w-2xl shadow-2xl">
+                            <div className="w-24 h-24 bg-duoc-yellow rounded-full flex items-center justify-center mb-8 animate-bounce shadow-[0_0_30px_rgba(251,191,36,0.5)]">
+                                <Hand size={48} className="text-black" />
+                            </div>
+                            <h2 className="text-4xl font-black text-white mb-4 drop-shadow-md">Atención requerida</h2>
+                            <p className="text-2xl text-white/90 leading-relaxed drop-shadow-sm font-medium">
+                                Por políticas de seguridad del navegador, <strong>toca la pantalla una vez</strong> para habilitar el sonido e interactuar con Leonor.
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

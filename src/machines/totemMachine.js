@@ -94,11 +94,26 @@ export function transition(currentState, event, context) {
                     if (event.userData) {
                         newContext.userData = event.userData;
                     }
-                    // Route to Accessibility Setup if modoAccesible is true
-                    if (newContext.modoAccesible) {
-                        return { state: STATES.ACCESSIBILITY_SETUP, context: newContext };
+                    if (event.inputMode === 'TOUCH' || event.inputMode === 'ACCESSIBLE') {
+                        if (newContext.modoAccesible) {
+                            return { state: STATES.ACCESSIBILITY_SETUP, context: newContext };
+                        }
+                        return { state: STATES.MENU, context: newContext };
                     }
-                    return { state: STATES.MENU, context: newContext };
+                    // Wait for VIDEO_ENDED before transitioning out
+                    return { state: STATES.LOGIN, context: newContext };
+                case EVENTS.VIDEO_ENDED:
+                    if (newContext.subState === 'login_success') {
+                        if (newContext.modoAccesible) {
+                            return { state: STATES.ACCESSIBILITY_SETUP, context: newContext };
+                        }
+                        return { state: STATES.MENU, context: newContext };
+                    }
+                    if (newContext.subState === 'bio_failed') {
+                        newContext.subState = null; // Resume face scanning
+                        return { state: STATES.LOGIN, context: newContext };
+                    }
+                    return { state: currentState, context };
                 case EVENTS.BIO_FAIL:
                     newContext.reintentosBio += 1;
                     if (newContext.reintentosBio >= 2) {
@@ -107,6 +122,9 @@ export function transition(currentState, event, context) {
                         return { state: STATES.LOGIN, context: newContext };
                     }
                     newContext.subState = 'bio_failed';
+                    if (event.inputMode === 'TOUCH' || event.inputMode === 'ACCESSIBLE') {
+                        newContext.subState = null; // En modo pantalla interactiva se salta el video y sigue scaneando
+                    }
                     return { state: STATES.LOGIN, context: newContext };
                 case EVENTS.ASESOR_YES:
                     newContext.ticketNumber = generateTicket();

@@ -12,5 +12,21 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+    function scaleTotem() {
+      const base = { w: 1080, h: 1920 };
+      const scale = Math.min(window.innerWidth / base.w, window.innerHeight / base.h);
+      const el = document.getElementById('root');
+      el.style.width = base.w + 'px';
+      el.style.height = base.h + 'px';
+      el.style.transform = `scale(${scale})`;
+      el.style.transformOrigin = 'top left';
+      el.style.position = 'fixed';
+      el.style.left = `${(window.innerWidth - base.w * scale) / 2}px`;
+      el.style.top = `${(window.innerHeight - base.h * scale) / 2}px`;
+    }
+    window.addEventListener('resize', scaleTotem);
+    scaleTotem();
+    </script>
   </body>
 </html>

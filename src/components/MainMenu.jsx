@@ -16,8 +16,8 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
                         ¡Hola {userData.nombre}!
                     </h2>
                 )}
-                <div className="bg-white border border-gray-200 rounded-3xl px-8 py-5 mb-6 shadow-md text-center w-full">
-                    <p className="text-xl md:text-2xl text-duoc-blue font-medium leading-relaxed drop-shadow-sm">{MENU_SUBTITLE}</p>
+                <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-[20px] px-8 py-6 mb-6 shadow-[0_8px_32px_rgba(0,0,0,0.15)] text-center w-full">
+                    <p className="text-[20px] md:text-[24px] text-[#111111] font-bold leading-relaxed">{MENU_SUBTITLE}</p>
                 </div>
 
                 {menuVideoEnded && (
@@ -53,10 +53,10 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
 
                 {!showHelpButtons && (
                     <button
-                        className="mt-8 flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50 hover:text-duoc-blue transition-colors shadow-sm"
+                        className="mt-8 flex items-center justify-center gap-2 px-6 py-4 bg-white border border-gray-300 rounded-xl text-[#111111] font-bold text-[18px] hover:bg-gray-50 transition-colors shadow-sm min-h-[48px]"
                         onClick={() => setShowHelpButtons(true)}
                     >
-                        <HelpCircle size={18} /> ¿Necesitas ayuda?
+                        <HelpCircle size={20} className="text-[#111111]" /> ¿Necesitas ayuda?
                     </button>
                 )}
 
@@ -67,16 +67,16 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
                             {TRAMITES.map((tramite) => (
                                 <button
                                     key={tramite.id}
-                                    className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-2xl hover:border-duoc-yellow hover:-translate-y-1 transition-all shadow-sm hover:shadow-md text-left"
+                                    className="flex items-center gap-3 p-4 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all shadow-sm min-h-[48px] text-left"
                                     onClick={() => onSelectOption(tramite.id)}
                                 >
-                                    <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 border border-gray-300 text-duoc-blue font-bold">{tramite.id}</span>
-                                    <span className="font-semibold text-duoc-blue leading-tight">{tramite.nombre}</span>
+                                    <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-100 border border-gray-300 text-[#111111] font-bold">{tramite.id}</span>
+                                    <span className="font-bold text-[18px] text-[#111111] leading-tight">{tramite.nombre}</span>
                                 </button>
                             ))}
                         </div>
-                        <button className="w-full max-w-2xl flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-bold text-lg hover:scale-[1.02] transition-transform shadow-[0_4px_20px_rgba(242,169,0,0.3)]" onClick={() => onSelectOption(0)}>
-                            <Users size={22} /> Hablar con un asesor (0)
+                        <button className="w-full max-w-2xl flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[18px] hover:bg-gray-50 transition-colors shadow-sm min-h-[48px]" onClick={() => onSelectOption(0)}>
+                            <Users size={22} className="text-[#111111]" /> Hablar con un asesor (0)
                         </button>
                     </div>
                 )}
@@ -87,29 +87,29 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
     // ─── TOUCH / ACCESSIBLE mode — NO subtitle, just title + cards ───
     return (
         <div className="flex flex-col items-center w-full max-w-4xl">
-            <div className="text-duoc-blue mb-4 drop-shadow-sm"><ClipboardList size={48} /></div>
+            <div className="text-white mb-4 drop-shadow-sm"><ClipboardList size={48} /></div>
             {userData?.nombre ? (
-                <h2 className="text-3xl md:text-5xl font-black text-duoc-blue text-center mb-10 drop-shadow-sm">¡Hola {userData.nombre}!<br /><span className="text-2xl opacity-80">¿En qué te puedo ayudar?</span></h2>
+                <h2 className="text-3xl md:text-5xl font-black text-white text-center mb-10 drop-shadow-sm">¡Hola {userData.nombre}!<br /><span className="text-2xl opacity-90">¿En qué puedo ayudarte hoy?</span></h2>
             ) : (
-                <h2 className="text-3xl md:text-5xl font-black text-duoc-blue text-center mb-10 drop-shadow-sm">¿En qué te puedo ayudar?</h2>
+                <h2 className="text-3xl md:text-5xl font-black text-white text-center mb-10 drop-shadow-sm">¿En qué puedo ayudarte hoy?</h2>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-6 relative z-10">
                 {TRAMITES.map((tramite) => (
                     <button
                         key={tramite.id}
-                        className="group flex flex-col items-start gap-2 p-6 bg-white border border-gray-200 rounded-2xl hover:border-duoc-yellow hover:-translate-y-1 transition-all shadow-sm hover:shadow-md text-left"
+                        className="group flex flex-col items-start gap-2 p-6 bg-[#FFFFFF] border-2 border-transparent hover:border-gray-300 rounded-xl hover:bg-gray-50 transition-all shadow-md text-left min-h-[48px]"
                         onClick={() => onSelectOption(tramite.id)}
                     >
-                        <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-black text-lg mb-1">{tramite.id}</span>
-                        <span className="text-xl font-bold text-duoc-blue leading-tight">{tramite.nombre}</span>
-                        <span className="text-sm text-gray-600 mt-1 line-clamp-2">{tramite.descripcion}</span>
+                        <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite.id}</span>
+                        <span className="text-[20px] font-bold text-[#111111] leading-tight">{tramite.nombre}</span>
+                        <span className="text-[16px] font-medium text-[#222222] mt-1 line-clamp-2">{tramite.descripcion}</span>
                     </button>
                 ))}
             </div>
 
-            <button className="w-full relative z-10 flex items-center justify-center gap-3 px-8 py-6 rounded-2xl bg-gradient-to-br from-duoc-yellow to-duoc-yellow-dark text-black font-black text-2xl hover:scale-[1.02] transition-transform shadow-[0_8px_32px_rgba(242,169,0,0.4)]" onClick={() => onSelectOption(0)}>
-                <Users size={28} /> Hablar con un asesor
+            <button className="w-full relative z-10 flex items-center justify-center gap-3 px-8 py-6 rounded-xl bg-[#FFFFFF] border-2 border-transparent hover:border-gray-300 hover:bg-gray-50 text-[#111111] font-bold text-[22px] transition-colors shadow-md min-h-[48px]" onClick={() => onSelectOption(0)}>
+                <Users size={28} className="text-[#111111]" /> Hablar con un asesor
             </button>
         </div>
     );
