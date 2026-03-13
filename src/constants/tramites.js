@@ -7,15 +7,15 @@ const TRAMITES = [
     },
     {
         id: 2,
-        nombre: 'Horario Académico',
-        descripcion: 'Consulta tu horario de clases del semestre actual.',
-        resultado: '📅 Horario Académico — Semestre 2026-1\n\n🟦 Lunes\n  08:30 - 10:00  Programación Web (Lab 301)\n  10:15 - 11:45  Base de Datos II (Sala 205)\n\n🟩 Martes\n  08:30 - 10:00  Arquitectura de Software (Sala 108)\n  14:00 - 15:30  Inglés IV (Sala 412)\n\n🟨 Miércoles\n  10:15 - 11:45  Programación Web (Lab 301)\n  15:45 - 17:15  Metodología Ágil (Sala 310)\n\n🟧 Jueves\n  08:30 - 10:00  Base de Datos II (Lab 302)\n  11:00 - 12:30  Arquitectura de Software (Sala 108)\n\n🟥 Viernes\n  08:30 - 10:00  Taller de Integración (Lab 305)'
-    },
-    {
-        id: 3,
         nombre: 'Progreso Académico',
         descripcion: 'Revisa tu avance de malla curricular y promedio acumulado.',
         resultado: '📊 Progreso Académico\n\n👤 Usuario Simulado — Ingeniería en Informática\n\n📈 Avance de Malla: 68% (34 de 50 asignaturas aprobadas)\n⭐ Promedio Acumulado: 5.4\n📚 Semestre Actual: 7°\n✅ Asignaturas Aprobadas: 34\n⏳ Asignaturas Pendientes: 16\n❌ Asignaturas Reprobadas: 2\n\n🏆 Estado: Regular — Sin bloqueos académicos'
+    },
+    {
+        id: 3,
+        nombre: 'Ver Horario',
+        descripcion: 'Consulta tu horario de clases del semestre actual.',
+        resultado: '📅 Horario Académico — Semestre 2026-1\n\n🟦 Lunes\n  08:30 - 10:00  Programación Web (Lab 301)\n  10:15 - 11:45  Base de Datos II (Sala 205)\n\n🟩 Martes\n  08:30 - 10:00  Arquitectura de Software (Sala 108)\n  14:00 - 15:30  Inglés IV (Sala 412)\n\n🟨 Miércoles\n  10:15 - 11:45  Programación Web (Lab 301)\n  15:45 - 17:15  Metodología Ágil (Sala 310)\n\n🟧 Jueves\n  08:30 - 10:00  Base de Datos II (Lab 302)\n  11:00 - 12:30  Arquitectura de Software (Sala 108)\n\n🟥 Viernes\n  08:30 - 10:00  Taller de Integración (Lab 305)'
     },
     {
         id: 4,

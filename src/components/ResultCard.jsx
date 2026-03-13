@@ -31,7 +31,7 @@ function CertificadoCard({ userData }) {
     ];
 
     return (
-        <div className="w-full max-w-2xl bg-white border border-gray-200 rounded-3xl p-8 shadow-md relative overflow-hidden">
+        <div className="a11y-inner-card w-full max-w-2xl bg-white border border-gray-200 rounded-3xl p-8 shadow-md relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-gradient-to-r from-duoc-yellow to-duoc-yellow-dark text-black px-6 py-2 rounded-bl-2xl font-black text-sm shadow-lg tracking-wide">
                 ✓ GENERADO
             </div>
@@ -71,7 +71,7 @@ const HORARIO = [
 
 function HorarioCard() {
     return (
-        <div className="w-full max-w-4xl bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-md">
+        <div className="a11y-inner-card w-full max-w-4xl bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-md">
             <div className="bg-gray-50 px-8 py-5 border-b border-gray-200">
                 <h3 className="text-2xl font-bold text-duoc-blue">Tu Horario Académico</h3>
                 <p className="text-duoc-yellow-dark text-sm font-medium mt-1">Semestre 1 - 2026</p>
@@ -114,7 +114,7 @@ const PROMEDIO = (ASIGNATURAS.reduce((s, a) => s + a.nota * a.creditos, 0) /
 
 function ProgresoCard() {
     return (
-        <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-3xl p-8 shadow-md">
+        <div className="a11y-inner-card w-full max-w-3xl bg-white border border-gray-200 rounded-3xl p-8 shadow-md">
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 pb-6 border-b border-gray-200 gap-4">
                 <div>
                     <h3 className="text-2xl font-bold text-duoc-blue">Progreso Académico</h3>
@@ -162,7 +162,7 @@ function FinancieroCard() {
     const pct = ((pagado / total) * 100).toFixed(0);
 
     return (
-        <div className="w-full max-w-2xl bg-white border border-gray-200 rounded-3xl p-8 shadow-md">
+        <div className="a11y-inner-card w-full max-w-2xl bg-white border border-gray-200 rounded-3xl p-8 shadow-md">
             <h3 className="text-2xl font-bold text-duoc-blue mb-6">Situación Financiera</h3>
 
             <div className="flex flex-col sm:flex-row justify-between items-center bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-6">

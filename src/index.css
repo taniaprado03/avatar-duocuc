@@ -67,45 +67,75 @@ body {
 }
 
 /* =========================================
-   ACCESSIBILITY OVERRIDES
+   ACCESSIBILITY OVERRIDES — 5 opciones del tótem
    ========================================= */
 
-/* High Contrast: Enforce solid black bg and white/yellow text */
-.access-highContrast {
-  background: #000000 !important;
-  background-color: #000000 !important;
+/* ── 1. AGRANDAR TEXTO
+   Usa zoom (100% Chrome-compatible en tótem) para escalar el bloque
+   completo sin cascada ni conflicto con Tailwind utilities ── */
+.access-largeText .a11y-card {
+  zoom: 1.25;
+}
+.access-largeText .a11y-inner-card {
+  zoom: 1.1;
+}
+
+/* ── 2. ALTO CONTRASTE ── */
+.access-highContrast .a11y-card {
+  background-color: #111111 !important;
+  border: 2px solid #F2A900 !important;
+  color: #FFFFFF !important;
+}
+/* Headings en el panel principal */
+.access-highContrast .a11y-card > h2,
+.access-highContrast .a11y-card > h3,
+.access-highContrast .a11y-card [data-a11y-text] {
+  color: #FFFFFF !important;
+}
+/* Botones dentro del panel */
+.access-highContrast .a11y-card > .grid button,
+.access-highContrast .a11y-card > button {
+  background-color: #1a1a1a !important;
+  border: 2px solid #F2A900 !important;
+  color: #FFFFFF !important;
+}
+/* Número de badge de cada trámite */
+.access-highContrast .a11y-badge-num {
+  background-color: #F2A900 !important;
+  color: #000000 !important;
+  border: none !important;
+}
+/* Tarjetas anidadas internas (ResultCard, etc.) mantienen sus propios colores */
+.access-highContrast .a11y-card .a11y-inner-card {
+  background-color: #1a1a1a !important;
+  border-color: #F2A900 !important;
   color: #FFFFFF !important;
 }
 
-.access-highContrast * {
-  border-color: #FFFFFF !important;
+/* ── 3. SIN ANIMACIONES ── */
+.access-stopAnimations *,
+.access-stopAnimations *::before,
+.access-stopAnimations *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
-/* Large Text: Scale up all fonts */
-.access-largeText * {
-  font-size: 110% !important;
-  line-height: 1.5 !important;
+/* ── 4. FUENTE PARA DISLEXIA
+   Fuente amplia, con espaciado generoso ── */
+.access-dyslexiaFont .a11y-card,
+.access-dyslexiaFont .a11y-card * {
+  font-family: 'Arial Rounded MT Bold', 'Trebuchet MS', 'Arial', sans-serif !important;
+  letter-spacing: 0.05em !important;
+  word-spacing: 0.1em !important;
+  line-height: 1.7 !important;
 }
 
-/* Text Spacing: Increase letter and word spacing */
-.access-textSpacing * {
-  letter-spacing: 0.12em !important;
-  word-spacing: 0.16em !important;
-}
-
-/* Stop Animations: Disable CSS transitions and animations */
-.access-stopAnimations * {
-  transition: none !important;
-  animation: none !important;
-}
-
-/* Hide Images/Videos (except Avatar which is essential, maybe) */
-.access-hideImages img,
-.access-hideImages svg {
-  display: none !important;
-}
-
-/* Dyslexia Font: Fallback stack for readable fonts */
-.access-dyslexiaFont * {
-  font-family: 'Comic Sans MS', 'OpenDyslexic', 'Arial', sans-serif !important;
+/* ── 5. BOTONES GRANDES ── */
+.access-bigButtons .a11y-card button,
+.access-bigButtons .a11y-btn {
+  min-height: 88px !important;
+  font-size: 24px !important;
+  padding: 24px 36px !important;
+  border-radius: 20px !important;
 }

@@ -3,7 +3,7 @@ import { startCamera, stopCamera, analyzeFace } from '../services/facialRecognit
 import { BIOMETRIC_MODE } from '../services/biometricService';
 import { Camera, CheckCircle, XCircle, AlertTriangle, ShieldCheck, UserX } from 'lucide-react';
 
-function CameraPreview({ onFaceMatched, onFail }) {
+function CameraPreview({ onFaceMatched, onFail, inputMode }) {
     const videoRef = useRef(null);
     const [cameraError, setCameraError] = useState(null);
     const [cameraReady, setCameraReady] = useState(false);
@@ -70,9 +70,11 @@ function CameraPreview({ onFaceMatched, onFail }) {
 
     return (
         <div className="flex flex-col items-center w-full max-w-md mx-auto relative z-20 mt-32">
-            <div className="bg-[#FFFFFF] border-2 border-transparent rounded-xl px-8 py-4 mb-6 shadow-md text-center w-full max-w-sm">
-                <p className="text-[#111111] text-[20px] font-bold leading-relaxed">Mira directamente a la cámara para validar tu identidad.</p>
-            </div>
+            {inputMode !== 'VOICE' && (
+                <div className="bg-[#FFFFFF] border-2 border-transparent rounded-xl px-8 py-4 mb-6 shadow-md text-center w-full max-w-sm">
+                    <p className="text-[#111111] text-[20px] font-bold leading-relaxed">Mira directamente a la cámara para validar tu identidad.</p>
+                </div>
+            )}
             <div className="relative w-80 h-96 rounded-2xl overflow-hidden bg-black/40 backdrop-blur-md border border-white/20 shadow-2xl flex items-center justify-center">
                 {/* The actual webcam feed must be present for tf.js but hidden visually */}
                 <video ref={videoRef} autoPlay playsInline muted className="absolute opacity-0 pointer-events-none w-[1px] h-[1px]" />
@@ -121,7 +123,7 @@ function CameraPreview({ onFaceMatched, onFail }) {
     );
 }
 
-export default function BiometricLogin({ onSuccess, onFail, reintentosBio, showAsesorPrompt, onAsesorYes, onAsesorNo, modoAccesible }) {
+export default function BiometricLogin({ onSuccess, onFail, reintentosBio, showAsesorPrompt, onAsesorYes, onAsesorNo, modoAccesible, inputMode }) {
     if (showAsesorPrompt) {
         return (
             <div className="flex flex-col items-center justify-center w-full max-w-lg bg-white border border-red-200 rounded-3xl p-8 sm:p-10 shadow-lg text-center mx-auto">
@@ -150,6 +152,7 @@ export default function BiometricLogin({ onSuccess, onFail, reintentosBio, showA
                     onSuccess(userData);
                 }}
                 onFail={onFail}
+                inputMode={inputMode}
             />
 
             {reintentosBio > 0 && (

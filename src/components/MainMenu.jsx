@@ -2,7 +2,7 @@ import { useState } from 'react';
 import TRAMITES from '../constants/tramites';
 import { HelpCircle, Loader, Users, ClipboardList } from 'lucide-react';
 
-const MENU_SUBTITLE = '¿En qué puedo ayudarte hoy? Di uno para Certificado de Alumno Regular, dos para Horario Académico, tres para Progreso Académico, cuatro para Situación Financiera, o cero para ser atendido por un asesor académico.';
+const MENU_SUBTITLE = '¿En qué puedo ayudarte hoy? Di uno para Certificado de Alumno Regular, dos para Progreso Académico, tres para Ver Horario, cuatro para Situación Financiera, o cero para ser atendido por un asesor académico.';
 
 export default function MainMenu({ onSelectOption, isListening, transcript, modoAccesible, isProcessingVoice, inputMode, menuVideoEnded, userData }) {
     const [showHelpButtons, setShowHelpButtons] = useState(false);
@@ -11,36 +11,28 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
     if (inputMode === 'VOICE') {
         return (
             <div className="flex flex-col items-center w-full max-w-3xl">
-                {userData?.nombre && (
-                    <h2 className="text-4xl md:text-5xl font-black text-duoc-blue text-center mb-6 drop-shadow-sm">
-                        ¡Hola {userData.nombre}!
-                    </h2>
-                )}
-                <div className="bg-white/70 backdrop-blur-xl border border-white/40 rounded-[20px] px-8 py-6 mb-6 shadow-[0_8px_32px_rgba(0,0,0,0.15)] text-center w-full">
-                    <p className="text-[20px] md:text-[24px] text-[#111111] font-bold leading-relaxed">{MENU_SUBTITLE}</p>
-                </div>
 
                 {menuVideoEnded && (
                     <div className="flex flex-col items-center mt-6 gap-4">
                         {isProcessingVoice ? (
-                            <div className="flex items-center gap-3 bg-white px-6 py-3 rounded-full border border-gray-200 text-duoc-blue font-medium shadow-sm">
+                            <div className="flex items-center gap-3 bg-[#FFFFFF] px-6 py-3 rounded-xl border border-gray-300 text-[#111111] font-bold text-[18px] shadow-sm min-h-[48px]">
                                 <Loader size={20} className="animate-spin text-duoc-yellow" />
                                 <span>Procesando tu respuesta...</span>
                             </div>
                         ) : isListening ? (
-                            <div className="flex items-center gap-4 bg-duoc-blue/10 border border-duoc-blue/20 px-8 py-4 rounded-full text-duoc-blue font-bold shadow-sm">
+                            <div className="flex items-center gap-4 bg-[#FFFFFF] border border-gray-300 px-6 py-3 rounded-xl text-[#111111] font-bold text-[18px] shadow-sm min-h-[48px]">
                                 <div className="flex items-end gap-1 h-6">
-                                    <span className="w-1.5 bg-duoc-blue-light rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
-                                    <span className="w-1.5 bg-duoc-blue-light rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
-                                    <span className="w-1.5 bg-duoc-blue-light rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
-                                    <span className="w-1.5 bg-duoc-blue-light rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
-                                    <span className="w-1.5 bg-duoc-blue-light rounded-full animate-[voiceBar_1s_ease-in-out_infinite_0.4s] h-[50%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite_0.4s] h-[50%]" />
                                 </div>
-                                <span className="text-lg">Escuchando... di tu opción</span>
+                                <span>Escuchando... di tu opción</span>
                             </div>
                         ) : null}
                         {transcript && (
-                            <div className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-gray-800 font-medium max-w-md text-center text-lg mt-2 shadow-sm">
+                            <div className="px-6 py-3 bg-[#FFFFFF] border border-gray-300 rounded-xl text-[#111111] font-bold text-[18px] max-w-md text-center mt-2 shadow-sm min-h-[48px]">
                                 Escuché: &ldquo;<span className="text-duoc-blue font-bold">{transcript}</span>&rdquo;
                             </div>
                         )}
@@ -70,7 +62,7 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
                                     className="flex items-center gap-3 p-4 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all shadow-sm min-h-[48px] text-left"
                                     onClick={() => onSelectOption(tramite.id)}
                                 >
-                                    <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-100 border border-gray-300 text-[#111111] font-bold">{tramite.id}</span>
+                                    <span className="a11y-badge-num shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-100 border border-gray-300 text-[#111111] font-bold">{tramite.id}</span>
                                     <span className="font-bold text-[18px] text-[#111111] leading-tight">{tramite.nombre}</span>
                                 </button>
                             ))}
@@ -101,7 +93,7 @@ export default function MainMenu({ onSelectOption, isListening, transcript, modo
                         className="group flex flex-col items-start gap-2 p-6 bg-[#FFFFFF] border-2 border-transparent hover:border-gray-300 rounded-xl hover:bg-gray-50 transition-all shadow-md text-left min-h-[48px]"
                         onClick={() => onSelectOption(tramite.id)}
                     >
-                        <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite.id}</span>
+                        <span className="a11y-badge-num inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite.id}</span>
                         <span className="text-[20px] font-bold text-[#111111] leading-tight">{tramite.nombre}</span>
                         <span className="text-[16px] font-medium text-[#222222] mt-1 line-clamp-2">{tramite.descripcion}</span>
                     </button>

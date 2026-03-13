@@ -33,7 +33,7 @@ const SUBTITLES = {
     LOGIN: 'Por favor mira directamente a la cámara para validar tu identidad.',
     LOGIN_SUCCESS: 'Identidad validada.',
     LOGIN_FAIL: 'No pude validar tu identidad. Por favor intenta de nuevo.',
-    MENU: (name) => `Hola ${name ? name : ''}, ¿en qué puedo ayudarte hoy? Di uno para Certificado de Alumno Regular, dos para Horario Académico, tres para Progreso Académico, cuatro para Situación Financiera, o cero para ser atendido por un asesor académico.`,
+    MENU: (name) => `¿En qué puedo ayudarte hoy?\n• Di uno para Certificado de Alumno Regular\n• Di dos para Progreso Académico\n• Di tres para Ver Horario\n• Di cuatro para Situación Financiera\n• Di cero para ser atendido por un asesor académico`,
     CONFIRMING: '¿Confirmas tu selección? Di sí o no.',
     RESULT: 'Tu trámite fue procesado exitosamente. ¿Necesitas algo más? Di sí o no.',
     TRAMITE_ERROR: 'No fue posible completar tu trámite. ¿Deseas intentarlo nuevamente? Di sí o no.',
@@ -131,15 +131,13 @@ function App() {
     const [isProcessingVoice, setIsProcessingVoice] = useState(false);
     const [tramiteResultText, setTramiteResultText] = useState('');
 
-    // Accessibility Settings State
+    // Accessibility Settings State — 5 opciones del tótem
     const [accessSettings, setAccessSettings] = useState({
-        screenReader: false,
-        highContrast: false,
         largeText: false,
-        textSpacing: false,
+        highContrast: false,
         stopAnimations: false,
-        hideImages: false,
-        dyslexiaFont: false
+        dyslexiaFont: false,
+        bigButtons: false,
     });
     const [faceModelsReady, setFaceModelsReady] = useState(false);
     const [idleCameraError, setIdleCameraError] = useState(false);
@@ -193,14 +191,14 @@ function App() {
        VIDEO ENDED → STT
        ═══════════════════════════════════════════════ */
 
-    // Reset videoEnded on state change
+    // Reset videoEnded on state change OR subState change (e.g. not_understood)
     useEffect(() => {
         setVideoEnded(false);
         speech.stopListening();
         speech.resetTranscript();
         transcriptRef.current = '';
         processingRef.current = false;
-    }, [currentState]);
+    }, [currentState, context.subState]);
 
     // Touch/Accessible: no video, mark ended immediately
     useEffect(() => {
@@ -262,7 +260,9 @@ function App() {
 
         // WELCOME: mode selection
         if (currentState === STATES.WELCOME && !session.inputMode) {
-            if (text.includes('accesibilidad') || text.includes('accesible')) {
+            const isAccessRequest = /acces\w*/i.test(text) || text.includes('adaptar') || text.includes('accesib');
+            console.log('[VOICE WELCOME] transcript:', JSON.stringify(text), 'isAccessRequest:', isAccessRequest);
+            if (isAccessRequest) {
                 session.setInputMode('ACCESSIBLE');
                 session.setModoAccesible(true);
                 speech.resetTranscript();
@@ -478,7 +478,7 @@ function App() {
         return (
             <div className="flex flex-col items-center mt-6 gap-3">
                 {speech.isListening && (
-                    <div className="flex items-center gap-4 bg-white border border-gray-200 px-6 py-3 rounded-full text-duoc-blue font-bold shadow-sm">
+                    <div className="flex items-center gap-4 bg-[#FFFFFF] border border-gray-300 px-6 py-3 rounded-xl text-[#111111] font-bold text-[18px] shadow-sm min-h-[48px]">
                         <div className="flex items-end gap-1 h-5">
                             <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
                             <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
@@ -488,7 +488,7 @@ function App() {
                     </div>
                 )}
                 {speech.transcript && (
-                    <div className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-duoc-blue font-medium max-w-md text-center shadow-sm">
+                    <div className="px-6 py-3 bg-[#FFFFFF] border border-gray-300 rounded-xl text-[#111111] font-bold text-[18px] max-w-md text-center shadow-sm min-h-[48px]">
                         Escuché: &ldquo;<span className="text-duoc-blue font-bold">{speech.transcript}</span>&rdquo;
                     </div>
                 )}
@@ -505,6 +505,24 @@ function App() {
             case STATES.WELCOME:
                 return (
                     <div className="flex flex-col items-center w-full max-w-3xl">
+
+                        {/* Indicador de escucha de voz */}
+                        {videoEnded && speech.isListening && (
+                            <div className="flex items-center gap-4 bg-[#FFFFFF] border border-gray-300 px-6 py-3 rounded-xl text-[#111111] font-bold text-[18px] shadow-sm min-h-[48px] mb-6">
+                                <div className="flex items-end gap-1 h-6">
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
+                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite_0.4s] h-[50%]" />
+                                </div>
+                                <span>Di "hola" para voz o "accesibilidad" para adaptar tu experiencia</span>
+                            </div>
+                        )}
+
+                        {!videoEnded && (
+                            <p className="text-white/50 text-sm animate-pulse mb-4">Leonor está hablando...</p>
+                        )}
 
                         {/* Interactive Buttons */}
                         <div className="flex flex-col gap-4 w-full mt-6 px-12">
@@ -538,7 +556,6 @@ function App() {
             case STATES.LOGIN:
                 return (
                     <>
-                        {subtitle && renderSubtitle(subtitle)}
                         {(!context.subState || context.showAsesorPrompt) && (
                             <BiometricLogin
                                 onSuccess={(userData) => send({ type: EVENTS.BIO_SUCCESS, userData, inputMode: session.inputMode })}
@@ -548,6 +565,7 @@ function App() {
                                 onAsesorYes={() => send({ type: EVENTS.ASESOR_YES })}
                                 onAsesorNo={() => send({ type: EVENTS.ASESOR_NO })}
                                 modoAccesible={isAccessible}
+                                inputMode={session.inputMode}
                             />
                         )}
                     </>
@@ -588,16 +606,16 @@ function App() {
                 const tramite = TRAMITES.find(t => t.id === context.selectedTramite);
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-3xl mx-auto text-center">
-                        <div className="text-duoc-yellow mb-6 drop-shadow-sm"><HelpCircle size={56} /></div>
-                        <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Confirmar Trámite</h2>
+                        {!isVoice && <div className="text-duoc-yellow mb-6 drop-shadow-sm"><HelpCircle size={56} /></div>}
+                        {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Confirmar Trámite</h2>}
 
-                        <div className="flex flex-col items-start gap-2 bg-[#FFFFFF] border-2 border-transparent rounded-xl p-6 shadow-md w-full max-w-2xl mx-auto mb-8 hover:border-gray-300 transition-all text-left min-h-[48px]">
-                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite?.id}</span>
+                        <div className="a11y-inner-card flex flex-col items-start gap-2 bg-[#FFFFFF] border-2 border-transparent rounded-xl p-6 shadow-md w-full max-w-2xl mx-auto mb-8 hover:border-gray-300 transition-all text-left min-h-[48px]">
+                            <span className="a11y-badge-num inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite?.id}</span>
                             <h3 className="text-[20px] font-bold text-[#111111] leading-tight">{tramite?.nombre}</h3>
                             <p className="text-[16px] font-medium text-[#222222] mt-1">{tramite?.descripcion}</p>
                         </div>
 
-                        {renderSubtitle(subtitle)}
+                        {!isVoice && renderSubtitle(subtitle)}
                         {renderVoiceYesNo('Di "sí" o "no"')}
 
                         {!isVoice && (
@@ -618,9 +636,9 @@ function App() {
                 if (context.showRetryPrompt) {
                     return (
                         <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center">
-                            <div className="text-red-500 mb-6 drop-shadow-sm"><AlertTriangle size={56} /></div>
-                            <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Error en el trámite</h2>
-                            {renderSubtitle(subtitle)}
+                            {!isVoice && <div className="text-red-500 mb-6 drop-shadow-sm"><AlertTriangle size={56} /></div>}
+                            {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Error en el trámite</h2>}
+                            {!isVoice && renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
                             {!isVoice && (
                                 <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Reintentar o cancelar">
@@ -651,12 +669,12 @@ function App() {
             case STATES.RESULT:
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto text-center">
-                        <div className="text-green-500 mb-4 drop-shadow-sm"><CheckCircle2 size={56} /></div>
-                        <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Trámite Exitoso</h2>
+                        {!isVoice && <div className="text-green-500 mb-4 drop-shadow-sm"><CheckCircle2 size={56} /></div>}
+                        {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Trámite Exitoso</h2>}
                         <ResultCard tramiteId={context.selectedTramite} resultado={tramiteResultText} userData={context.userData} />
 
                         <div className="mt-8 w-full max-w-2xl mx-auto">
-                            {renderSubtitle(subtitle)}
+                            {!isVoice && renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
                             {!isVoice && (
                                 <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Más trámites o finalizar">
@@ -681,8 +699,8 @@ function App() {
             case STATES.GOODBYE:
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center">
-                        <h2 className="text-5xl font-black text-white mb-8 drop-shadow-md">Fue un placer ayudarte. ¡Hasta pronto!</h2>
-                        {renderSubtitle(subtitle)}
+                        {!isVoice && <h2 className="text-5xl font-black text-white mb-8 drop-shadow-md">Fue un placer ayudarte. ¡Hasta pronto!</h2>}
+                        {!isVoice && renderSubtitle(subtitle)}
                         {context.ticketNumber && (
                             <div className="flex flex-col items-center bg-white border border-gray-200 rounded-3xl p-10 shadow-lg w-full mb-8 relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-duoc-yellow to-duoc-yellow-dark" />
@@ -699,8 +717,8 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center bg-white p-12 rounded-[3rem] border border-gray-200 shadow-xl">
                         <div className="text-red-500 mb-6 drop-shadow-sm animate-pulse"><Clock size={64} /></div>
-                        <h2 className="text-5xl font-black text-white mb-6 drop-shadow-md">¿Sigues ahí?</h2>
-                        {renderSubtitle(subtitle)}
+                        {!isVoice && <h2 className="text-5xl font-black text-white mb-6 drop-shadow-md">¿Sigues ahí?</h2>}
+                        {!isVoice && renderSubtitle(subtitle)}
                         {renderVoiceYesNo('Di "sí" para continuar')}
                         <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Continuar o salir">
                             <button aria-label="Sí, continuar con la sesión" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONTINUE })}>
@@ -792,7 +810,7 @@ function App() {
         .join(' ');
 
     return (
-        <div className="w-[1080px] h-[1920px] bg-black relative overflow-hidden font-sans select-none"
+        <div className={`w-[1080px] h-[1920px] bg-black relative overflow-hidden font-sans select-none ${accessibilityClasses}`}
             onClick={() => session.resetTimer()}
         >
             {/* TIMEOUT BAR */}
@@ -834,27 +852,19 @@ function App() {
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); session.setInputMode('ACCESSIBLE'); session.setModoAccesible(true); send({ type: EVENTS.ACCESSIBILITY }); }}
-                        className="flex items-center gap-3 px-6 py-4 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white font-bold text-[1.2rem] hover:bg-black/60 transition-colors shadow-lg"
-                        aria-label="Menú de accesibilidad"
-                    >
-                        <Accessibility size={24} /> Accesibilidad
-                    </button>
+                    {currentState === STATES.WELCOME && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); session.setInputMode('ACCESSIBLE'); session.setModoAccesible(true); send({ type: EVENTS.ACCESSIBILITY }); }}
+                            className="flex items-center gap-3 px-6 py-4 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white font-bold text-[1.2rem] hover:bg-black/60 transition-colors shadow-lg"
+                            aria-label="Menú de accesibilidad"
+                        >
+                            <Accessibility size={24} /> Accesibilidad
+                        </button>
+                    )}
                 </div>
 
-                {/* ANIMACIÓN DE ESCUCHA (VOZ) */}
-                {speech.isListening && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
-                        <div className="flex items-end gap-3 px-8 py-6 bg-black/40 backdrop-blur-xl rounded-full shadow-[0_0_50px_rgba(251,191,36,0.3)] border border-duoc-yellow/30">
-                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-8" />
-                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-14" />
-                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-10" />
-                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-16" />
-                            <span className="w-3 bg-duoc-yellow rounded-full animate-[voiceBar_1.3s_ease-in-out_infinite_0.4s] h-10" />
-                        </div>
-                    </div>
-                )}
+
+
 
                 {/* ZONA INFERIOR - INTERACCIÓN Y CONTROLES */}
                 <div className="w-full flex-col flex justify-end pb-8">
@@ -862,10 +872,10 @@ function App() {
                     {/* Subtítulos */}
                     <div className="w-full flex justify-center px-12 mb-8">
                         {subtitle && !isTouch && !isAccessible && (
-                            <div className="w-full max-w-[800px] text-center">
-                                <p className="text-[1.5rem] font-bold text-white drop-shadow-xl leading-relaxed bg-black/50 px-8 py-6 rounded-3xl backdrop-blur-md border border-white/10">
-                                    "{subtitle}"
-                                </p>
+                            <div className="w-full max-w-[800px]">
+                                <div className={`text-[1.3rem] font-bold text-white drop-shadow-xl leading-relaxed bg-black/50 px-8 py-6 rounded-3xl backdrop-blur-md border border-white/10 ${subtitle.includes('\n') ? 'text-left' : 'text-center'}`} style={{ whiteSpace: 'pre-line' }}>
+                                    {subtitle}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -882,7 +892,7 @@ function App() {
                                 className="w-full flex flex-col items-center gap-5"
                             >
                                 {isAccessible && currentState !== STATES.LOGIN && currentState !== STATES.WELCOME
-                                    ? <div className="bg-white rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200">
+                                    ? <div className="bg-white rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200 a11y-card">
                                         <AccessibleMode currentState={currentState}>{renderContent()}</AccessibleMode>
                                     </div>
                                     : renderContent()
