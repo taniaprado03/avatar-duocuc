@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { STATES, EVENTS, transition, createInitialContext } from './machines/totemMachine';
 import { useSession } from './hooks/useSession';
 import { useSpeech } from './hooks/useSpeech';
-import { mapVoiceToOption } from './services/claudeService';
+import { mapVoiceToOption, mapVoiceToAsesorSubOption } from './services/claudeService';
 import { loadModels, startDetection, stopDetection } from './services/presenceService';
 import { startCamera, stopCamera } from './services/facialRecognitionService';
 import { sendTicketEmail } from './services/emailService';
@@ -22,18 +22,18 @@ import {
     Monitor, Accessibility, RefreshCw, LogOut,
     CheckCircle, AlertTriangle, HelpCircle,
     Hand, Clock, Settings, Mic, CheckCircle2,
-    ArrowLeft
+    ArrowLeft, BookOpen, Briefcase, Heart, Landmark, Users
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════
    SUBTÍTULOS EXACTOS
    ═══════════════════════════════════════════════════ */
 const SUBTITLES = {
-    WELCOME: 'Hola, bienvenido a DUOC UC. Soy LeonorIA. Di hola para interactuar por voz, presiona Iniciar para interactuar por pantalla, o di accesibilidad o presiona el botón para adaptar tu experiencia.',
+    WELCOME: 'Hola, bienvenido a DUOC UC. Soy TanIA . Di hola para interactuar por voz, presiona Iniciar para interactuar por pantalla, o di accesibilidad o presiona el botón para adaptar tu experiencia.',
     LOGIN: 'Por favor mira directamente a la cámara para validar tu identidad.',
     LOGIN_SUCCESS: 'Identidad validada.',
     LOGIN_FAIL: 'No pude validar tu identidad. Por favor intenta de nuevo.',
-    MENU: (name) => `¿En qué puedo ayudarte hoy?\n• Di uno para Certificado de Alumno Regular\n• Di dos para Progreso Académico\n• Di tres para Ver Horario\n• Di cuatro para Situación Financiera\n• Di cero para ser atendido por un asesor académico`,
+    MENU: (name) => `¿En qué puedo ayudarte hoy?\n• Di uno para Certificado de Alumno Regular\n• Di dos para Ver Horario\n• Di tres para Progreso Académico\n• Di cuatro para Situación Financiera\n• Di cinco para Preguntas Frecuentes\n• Di cero para ser atendido por un asesor académico`,
     CONFIRMING: '¿Confirmas tu selección? Di sí o no.',
     RESULT: 'Tu trámite fue procesado exitosamente. ¿Necesitas algo más? Di sí o no.',
     TRAMITE_ERROR: 'No fue posible completar tu trámite. ¿Deseas intentarlo nuevamente? Di sí o no.',
@@ -53,8 +53,9 @@ function getVideoForState(state, context, inputMode) {
             if (context.subState === 'login_success') return VIDEOS.LOGIN_SUCCESS;
             return VIDEOS.LOGIN_INSTRUCTIONS;
         case STATES.MENU:
+        case STATES.SUB_MENU_ASESOR:
             if (context.subState === 'not_understood') return VIDEOS.NO_ENTENDI;
-            return VIDEOS.MENU;
+            return (state === STATES.SUB_MENU_ASESOR) ? VIDEOS.ASESOR : VIDEOS.MENU;
         case STATES.CONFIRMING: return VIDEOS.CONFIRMING;
         case STATES.EXECUTING:
             if (context.showRetryPrompt) return VIDEOS.TRAMITE_ERROR;
@@ -76,6 +77,9 @@ function getSubtitleForState(state, context) {
         case STATES.MENU:
             if (context.subState === 'not_understood') return SUBTITLES.NO_ENTENDI;
             return SUBTITLES.MENU(context.userData?.nombre || '');
+        case STATES.SUB_MENU_ASESOR:
+            if (context.subState === 'not_understood') return SUBTITLES.NO_ENTENDI;
+            return 'Elige tu Asesor: Di "Académico", "Práctica", "Inclusión" o "Financiero".';
         case STATES.CONFIRMING: return SUBTITLES.CONFIRMING;
         case STATES.EXECUTING:
             if (context.showRetryPrompt) return SUBTITLES.TRAMITE_ERROR;
@@ -230,6 +234,7 @@ function App() {
 
         const activeStates = [
             STATES.MENU,
+            STATES.SUB_MENU_ASESOR,
             STATES.CONFIRMING,
             STATES.RESULT,
             STATES.INACTIVITY,
@@ -286,6 +291,12 @@ function App() {
             return;
         }
 
+        // SUB-MENU ASESOR: Claude mapping
+        if (currentState === STATES.SUB_MENU_ASESOR && isVoice) {
+            handleAsesorVoice(speech.transcript);
+            return;
+        }
+
         const hasSi = text.includes('sí') || text.includes('si') || text.includes('claro') || text.includes('dale') || text.includes('confirmar');
         const hasNo = text.includes('no') || text.includes('cancelar') || text.includes('volver');
 
@@ -333,6 +344,25 @@ function App() {
             speech.resetTranscript();
             transcriptRef.current = '';
             if (option !== null) send({ type: EVENTS.SELECT_OPTION, option });
+            else send({ type: EVENTS.NOT_UNDERSTOOD });
+        } catch {
+            send({ type: EVENTS.NOT_UNDERSTOOD });
+        } finally {
+            setIsProcessingVoice(false);
+            processingRef.current = false;
+        }
+    }
+
+    async function handleAsesorVoice(transcript) {
+        if (processingRef.current) return;
+        processingRef.current = true;
+        setIsProcessingVoice(true);
+        speech.stopListening();
+        try {
+            const prefix = await mapVoiceToAsesorSubOption(transcript);
+            speech.resetTranscript();
+            transcriptRef.current = '';
+            if (prefix) send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix });
             else send({ type: EVENTS.NOT_UNDERSTOOD });
         } catch {
             send({ type: EVENTS.NOT_UNDERSTOOD });
@@ -474,7 +504,7 @@ function App() {
 
     function renderVoiceYesNo(prompt) {
         if (!isVoice) return null;
-        if (!videoEnded) return <p className="text-white/50 text-sm animate-pulse mt-4">Leonor está hablando...</p>;
+        if (!videoEnded) return <p className="text-white/50 text-sm animate-pulse mt-4">TanIA está hablando...</p>;
         return (
             <div className="flex flex-col items-center mt-6 gap-3">
                 {speech.isListening && (
@@ -508,46 +538,47 @@ function App() {
 
                         {/* Indicador de escucha de voz */}
                         {videoEnded && speech.isListening && (
-                            <div className="flex items-center gap-4 bg-[#FFFFFF] border border-gray-300 px-6 py-3 rounded-xl text-[#111111] font-bold text-[18px] shadow-sm min-h-[48px] mb-6">
-                                <div className="flex items-end gap-1 h-6">
-                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
-                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
-                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
-                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
-                                    <span className="w-1.5 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite_0.4s] h-[50%]" />
+                            <div className="flex items-center justify-center gap-5 bg-white px-8 py-4 rounded-full text-[#111111] font-bold text-[18px] shadow-2xl mb-8 mx-auto w-max">
+                                <div className="flex items-end gap-1.5 h-6">
+                                    <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
+                                    <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
+                                    <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
+                                    <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
+                                    <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite_0.4s] h-[50%]" />
                                 </div>
-                                <span>Di "hola" para voz o "accesibilidad" para adaptar tu experiencia</span>
+                                <span className="tracking-wide">Di "hola" o "accesibilidad"</span>
                             </div>
                         )}
 
+
                         {!videoEnded && (
-                            <p className="text-white/50 text-sm animate-pulse mb-4">Leonor está hablando...</p>
+                            <p className="text-white/60 text-[1rem] font-medium tracking-wide animate-pulse mb-8">TanIA está hablando...</p>
                         )}
 
                         {/* Interactive Buttons */}
-                        <div className="flex flex-col gap-4 w-full mt-6 px-12">
+                        <div className="flex flex-col gap-8 w-full max-w-[1000px] mt-4 px-10">
                             <button
                                 aria-label="Iniciar modo pantalla táctil"
                                 data-action="primary"
                                 onClick={() => { session.setInputMode('TOUCH'); send({ type: EVENTS.START }); }}
-                                className="flex items-center justify-center gap-4 w-full min-h-[64px] py-5 rounded-xl bg-white text-[#111111] font-bold text-[22px] hover:bg-gray-100 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
+                                className="flex items-center justify-center gap-6 w-full min-h-[150px] py-8 rounded-[3rem] bg-white text-[#111111] font-black text-[56px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none"
                             >
-                                <Monitor size={28} className="text-[#111111]" /> Iniciar
+                                <Monitor size={64} className="text-[#111111]" /> Iniciar
                             </button>
                             <button
                                 aria-label="Repetir mensaje de bienvenida"
                                 onClick={() => { if (avatarRef.current) { avatarRef.current.replay(); setVideoEnded(false); speech.stopListening(); } }}
-                                className="flex items-center justify-center gap-4 w-full min-h-[64px] py-5 rounded-xl bg-white text-[#111111] font-bold text-[22px] hover:bg-gray-100 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
+                                className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none"
                             >
-                                <RefreshCw size={28} className="text-[#111111]" /> Repetir
+                                <RefreshCw size={40} className="text-white" /> Repetir
                             </button>
                             <button
                                 aria-label="Salir de la aplicación"
                                 data-action="back"
                                 onClick={() => send({ type: EVENTS.EXIT })}
-                                className="flex items-center justify-center gap-4 w-full min-h-[64px] py-5 rounded-xl bg-white text-[#111111] font-bold text-[22px] hover:bg-gray-100 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-white/50"
+                                className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none"
                             >
-                                <LogOut size={28} className="text-[#111111]" /> Salir
+                                <LogOut size={40} className="text-white" /> Salir
                             </button>
                         </div>
                     </div>
@@ -602,6 +633,46 @@ function App() {
                     />
                 );
 
+            case STATES.SUB_MENU_ASESOR:
+                return (
+                    <div className="flex flex-col items-center justify-center w-full max-w-[1200px] mx-auto text-center px-8">
+                        {!isVoice && <div className="text-duoc-yellow mb-4 drop-shadow-sm"><Users size={56} /></div>}
+                        {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">¿A qué área quieres dirigirte?</h2>}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                            {[
+                                { id: 'ACA', nombre: 'Académico', desc: 'Convalidaciones, notas, malla y asistencia.', icon: <BookOpen size={40} /> },
+                                { id: 'PRA', nombre: 'Práctica y Título', desc: 'Portafolio, inscripción, empresas.', icon: <Briefcase size={40} /> },
+                                { id: 'INC', nombre: 'Inclusión', desc: 'Adecuaciones, apoyo psicosocial e integración.', icon: <Heart size={40} /> },
+                                { id: 'FIN', nombre: 'Financiero', desc: 'Pagos, becas, CAE, deudas y pagarés.', icon: <Landmark size={40} /> },
+                            ].map((area) => (
+                                <button
+                                    key={area.id}
+                                    onClick={() => send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id })}
+                                    className="group flex flex-col items-start gap-4 p-8 bg-white/10 hover:bg-white/20 backdrop-blur-xl border-2 border-white/20 hover:border-duoc-yellow rounded-[2.5rem] transition-all focus:outline-none focus:ring-4 focus:ring-duoc-yellow min-h-[170px]"
+                                >
+                                    <div className="flex items-center gap-6 w-full">
+                                        <div className="flex items-center justify-center w-[80px] h-[80px] bg-duoc-blue text-white rounded-2xl shadow-inner border-2 border-white/20">
+                                            {area.icon}
+                                        </div>
+                                        <h3 className="text-3xl font-black text-white leading-tight flex-1 text-left">{area.nombre}</h3>
+                                    </div>
+                                    <p className="text-xl font-medium text-white/80 text-left w-full mt-2">{area.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                        
+                        {!isVoice && renderSubtitle(subtitle)}
+                        {renderVoiceYesNo('Di claramente el área')}
+
+                        <div className="mt-8 w-full max-w-[1000px] mx-auto px-12">
+                             <button aria-label="Volver al menú principal" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] hover:bg-white/20 transition-all shadow-xl focus:outline-none" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
+                                 <ArrowLeft size={40} className="text-white" /> Volver al menú
+                             </button>
+                        </div>
+                    </div>
+                );
+
             case STATES.CONFIRMING: {
                 const tramite = TRAMITES.find(t => t.id === context.selectedTramite);
                 return (
@@ -609,25 +680,25 @@ function App() {
                         {!isVoice && <div className="text-duoc-yellow mb-6 drop-shadow-sm"><HelpCircle size={56} /></div>}
                         {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Confirmar Trámite</h2>}
 
-                        <div className="a11y-inner-card flex flex-col items-start gap-2 bg-[#FFFFFF] border-2 border-transparent rounded-xl p-6 shadow-md w-full max-w-2xl mx-auto mb-8 hover:border-gray-300 transition-all text-left min-h-[48px]">
-                            <span className="a11y-badge-num inline-flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 text-[#111111] font-bold text-[18px] mb-1">{tramite?.id}</span>
-                            <h3 className="text-[20px] font-bold text-[#111111] leading-tight">{tramite?.nombre}</h3>
-                            <p className="text-[16px] font-medium text-[#222222] mt-1">{tramite?.descripcion}</p>
+                        <div className="a11y-inner-card flex flex-col items-start gap-4 bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-[2.5rem] p-8 shadow-2xl w-full max-w-2xl mx-auto mb-10 transition-all min-h-[170px]">
+                            <div className="flex items-center gap-6 w-full">
+                                <span className="shrink-0 flex items-center justify-center w-[80px] h-[80px] rounded-2xl bg-white/20 text-white font-black text-[36px] border-[2px] border-white/20 shadow-inner">{tramite?.id}</span>
+                                <h3 className="text-[32px] font-black text-white leading-tight break-words text-left">{tramite?.nombre}</h3>
+                            </div>
+                            <p className="text-[1.3rem] font-medium opacity-90 text-white mt-3 line-clamp-2 text-left w-full">{tramite?.descripcion}</p>
                         </div>
 
                         {!isVoice && renderSubtitle(subtitle)}
                         {renderVoiceYesNo('Di "sí" o "no"')}
 
-                        {!isVoice && (
-                            <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Confirmar o cancelar trámite">
-                                <button aria-label="Sí, confirmar trámite" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONFIRM_YES })}>
-                                    <CheckCircle size={32} className="text-[#111111]" /> Sí, continuar
-                                </button>
-                                <button aria-label="No, volver al menú principal" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
-                                    <ArrowLeft size={32} className="text-[#111111]" /> No, volver al menú
-                                </button>
-                            </div>
-                        )}
+                        <div className="flex flex-col gap-6 w-full max-w-[1000px] mx-auto mt-8 px-12" role="group" aria-label="Confirmar o cancelar trámite">
+                            <button aria-label="Sí, confirmar trámite" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.CONFIRM_YES })}>
+                                <CheckCircle size={40} className="text-[#111111]" /> Sí, continuar
+                            </button>
+                            <button aria-label="No, volver al menú principal" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
+                                <ArrowLeft size={40} className="text-white" /> No, volver al menú
+                            </button>
+                        </div>
                     </div>
                 );
             }
@@ -640,16 +711,14 @@ function App() {
                             {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Error en el trámite</h2>}
                             {!isVoice && renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
-                            {!isVoice && (
-                                <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Reintentar o cancelar">
-                                    <button aria-label="Sí, reintentar trámite" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.RETRY_YES })}>
-                                        <RefreshCw size={32} className="text-[#111111]" /> Sí, reintentar
-                                    </button>
-                                    <button aria-label="No, volver al menú" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.RETRY_NO })}>
-                                        <ArrowLeft size={32} className="text-[#111111]" /> No, volver al menú
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex flex-col gap-6 w-full max-w-[1000px] mx-auto mt-8 px-12" role="group" aria-label="Reintentar o cancelar">
+                                <button aria-label="Sí, reintentar trámite" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.RETRY_YES })}>
+                                    <RefreshCw size={40} className="text-[#111111]" /> Sí, reintentar
+                                </button>
+                                <button aria-label="No, volver al menú" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.RETRY_NO })}>
+                                    <ArrowLeft size={40} className="text-white" /> No, volver al menú
+                                </button>
+                            </div>
                         </div>
                     );
                 }
@@ -676,19 +745,17 @@ function App() {
                         <div className="mt-8 w-full max-w-2xl mx-auto">
                             {!isVoice && renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
-                            {!isVoice && (
-                                <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Más trámites o finalizar">
-                                    <button aria-label="Sí, realizar otro trámite" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.MORE_YES })}>
-                                        <CheckCircle size={32} className="text-[#111111]" /> Sí, otro trámite
-                                    </button>
-                                    <button aria-label="No, finalizar sesión" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.MORE_NO })}>
-                                        <Hand size={32} className="text-[#111111]" /> No, finalizar
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex flex-col gap-6 w-full max-w-[1000px] mx-auto mt-8 px-12" role="group" aria-label="Más trámites o finalizar">
+                                <button aria-label="Sí, realizar otro trámite" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.MORE_YES })}>
+                                    <CheckCircle size={40} className="text-[#111111]" /> Sí, otro trámite
+                                </button>
+                                <button aria-label="No, finalizar sesión" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.MORE_NO })}>
+                                    <Hand size={40} className="text-white" /> No, finalizar
+                                </button>
+                            </div>
                         </div>
                         {context.accionesExitosas >= 3 && (
-                            <div className="mt-8 flex items-center justify-center gap-3 px-6 py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 rounded-xl font-medium shadow-md">
+                            <div className="mt-8 flex items-center justify-center gap-3 px-6 py-4 bg-orange-500/20 border border-orange-500/50 text-orange-200 rounded-2xl font-medium shadow-md backdrop-blur-md">
                                 <AlertTriangle size={20} className="animate-pulse" />
                                 Llevas {context.accionesExitosas} trámites. Máximo 4 permitidos por sesión.
                             </div>
@@ -702,11 +769,11 @@ function App() {
                         {!isVoice && <h2 className="text-5xl font-black text-white mb-8 drop-shadow-md">Fue un placer ayudarte. ¡Hasta pronto!</h2>}
                         {!isVoice && renderSubtitle(subtitle)}
                         {context.ticketNumber && (
-                            <div className="flex flex-col items-center bg-white border border-gray-200 rounded-3xl p-10 shadow-lg w-full mb-8 relative overflow-hidden">
+                            <div className="flex flex-col items-center bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl w-full mb-8 relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-duoc-yellow to-duoc-yellow-dark" />
-                                <span className="text-gray-500 tracking-[0.2em] font-medium uppercase text-sm mb-4">Tu ticket de atención</span>
-                                <div className="text-7xl font-black text-duoc-yellow-dark drop-shadow-sm tracking-widest">{context.ticketNumber}</div>
-                                <span className="text-gray-800 mt-6 font-medium text-lg">Presenta este número en el mesón de atención</span>
+                                <span className="text-white/60 tracking-[0.2em] font-bold uppercase text-[15px] mb-4">Tu ticket de atención</span>
+                                <div className="text-[5rem] font-black text-duoc-yellow drop-shadow-md tracking-widest">{context.ticketNumber}</div>
+                                <span className="text-white/90 mt-6 font-medium text-[20px]">Presenta este número en el mesón de atención</span>
                             </div>
                         )}
                         <p className="text-gray-400 font-medium text-xl mt-4 animate-pulse">Volviendo al inicio...</p>
@@ -715,20 +782,23 @@ function App() {
 
             case STATES.INACTIVITY:
                 return (
-                    <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center bg-white p-12 rounded-[3rem] border border-gray-200 shadow-xl">
-                        <div className="text-red-500 mb-6 drop-shadow-sm animate-pulse"><Clock size={64} /></div>
-                        {!isVoice && <h2 className="text-5xl font-black text-white mb-6 drop-shadow-md">¿Sigues ahí?</h2>}
+                    <div className="flex flex-col items-center justify-center w-full max-w-[1000px] mx-auto text-center a11y-inner-card bg-black/60 backdrop-blur-xl border-4 border-white/20 rounded-[3rem] p-16 shadow-[0_20px_60px_rgba(0,0,0,0.8)] mt-10">
+                        <div className="text-red-400 mb-8 drop-shadow-md animate-pulse"><Clock size={80} /></div>
+                        <h2 className="text-[48px] font-black text-white mb-6 drop-shadow-md">¿Sigues ahí?</h2>
+                        <p className="text-[28px] font-medium text-white/80 mb-12">La sesión se cerrará automáticamente en unos segundos.</p>
+                        
                         {!isVoice && renderSubtitle(subtitle)}
                         {renderVoiceYesNo('Di "sí" para continuar')}
-                        <div className="flex flex-col gap-4 w-full mt-6 px-12" role="group" aria-label="Continuar o salir">
-                            <button aria-label="Sí, continuar con la sesión" data-action="primary" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.CONTINUE })}>
-                                <CheckCircle size={32} className="text-[#111111]" /> Sí, continuar
+                        
+                        <div className="flex flex-col gap-6 w-full mt-8 px-12" role="group" aria-label="Continuar o salir">
+                            <button aria-label="Sí, continuar con la sesión" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.CONTINUE })}>
+                                <CheckCircle size={40} className="text-[#111111]" /> Sí, continuar
                             </button>
-                            <button aria-label="No, cerrar sesión" data-action="back" className="flex items-center justify-center gap-4 px-8 py-6 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[24px] hover:bg-gray-100 transition-colors shadow-sm focus:outline-none focus:ring-4 focus:ring-gray-200" onClick={() => send({ type: EVENTS.EXIT })}>
-                                <LogOut size={32} className="text-[#111111]" /> No, salir
+                            <button aria-label="No, cerrar sesión" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.EXIT })}>
+                                <LogOut size={40} className="text-white" /> No, salir
                             </button>
                         </div>
-                        <p className="text-gray-400 font-medium mt-8">Volviendo al inicio si no respondes...</p>
+                        <p className="text-white/60 font-medium mt-10 text-[20px]">Volviendo al inicio si no respondes...</p>
                     </div>
                 );
 
@@ -809,6 +879,8 @@ function App() {
         .map(([key, _]) => `access-${key}`)
         .join(' ');
 
+    const useUnifiedBottom = !isTouch && !isAccessible && [STATES.WELCOME, STATES.MENU, STATES.TRAMITE_SELECCIONADO, STATES.SUCCESS, STATES.ERROR, STATES.FAREWELL].includes(currentState);
+
     return (
         <div className={`w-[1080px] h-[1920px] bg-black relative overflow-hidden font-sans select-none ${accessibilityClasses}`}
             onClick={() => session.resetTimer()}
@@ -833,8 +905,8 @@ function App() {
                         onPlayError={() => setAutoplayBlocked(true)}
                     />
                 )}
-                {/* Gradiente sutil abajo para que destaquen textos blancos / botones */}
-                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+                {/* Gradiente muy traslúcido abajo para que destaquen textos blancos / botones */}
+                <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
                 {/* Gradiente sutil arriba para el header */}
                 <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
             </div>
@@ -844,80 +916,103 @@ function App() {
 
                 {/* ZONA SUPERIOR - HEADER FLOTANTE */}
                 <div className="w-full px-12 pt-12 flex items-start justify-between">
-                    <div>
-                        <div className="text-[1.5rem] uppercase tracking-[0.25em] font-black text-white drop-shadow-sm">Tótem de Autoatención</div>
+                    <div className="flex flex-col">
                         {session.timerActive && session.timeRemaining <= 30 && (
-                            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 backdrop-blur-md text-[1rem] font-bold ${session.timeRemaining <= 15 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-black/30 text-white'}`}>
+                            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 backdrop-blur-md text-[1rem] font-bold ${session.timeRemaining <= 15 ? 'bg-red-500/80 text-white animate-pulse' : 'bg-black/30 text-white'}`}>
                                 <Clock size={18} /> {session.timeRemaining}s
                             </div>
                         )}
                     </div>
-                    {currentState === STATES.WELCOME && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); session.setInputMode('ACCESSIBLE'); session.setModoAccesible(true); send({ type: EVENTS.ACCESSIBILITY }); }}
-                            className="flex items-center gap-3 px-6 py-4 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white font-bold text-[1.2rem] hover:bg-black/60 transition-colors shadow-lg"
-                            aria-label="Menú de accesibilidad"
-                        >
-                            <Accessibility size={24} /> Accesibilidad
-                        </button>
-                    )}
+                    
+                    <div className="flex items-center gap-4">
+                        {/* Botón de Accesibilidad solo en Welcome */}
+                        {currentState === STATES.WELCOME && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); session.setInputMode('ACCESSIBLE'); session.setModoAccesible(true); send({ type: EVENTS.ACCESSIBILITY }); }}
+                                className="flex items-center gap-3 px-6 py-4 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white font-bold text-[1.2rem] hover:bg-black/60 transition-colors shadow-lg focus:outline-none focus:ring-4 focus:ring-duoc-yellow"
+                                aria-label="Menú de accesibilidad"
+                            >
+                                <Accessibility size={24} /> Accesibilidad
+                            </button>
+                        )}
+
+                        {/* Botón Salir Global en todas partes excepto IDLE y WELCOME */}
+                        {currentState !== STATES.IDLE && currentState !== STATES.WELCOME && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); send({ type: EVENTS.EXIT }); }}
+                                className="flex items-center gap-3 px-8 py-4 rounded-full bg-red-600/90 border border-white/20 backdrop-blur-md text-white font-bold text-[1.4rem] hover:bg-red-700 transition-colors shadow-xl focus:outline-none focus:ring-4 focus:ring-red-400"
+                                aria-label="Salir al inicio"
+                            >
+                                <LogOut size={28} /> Salir / Volver
+                            </button>
+                        )}
+                    </div>
                 </div>
 
 
 
 
                 {/* ZONA INFERIOR - INTERACCIÓN Y CONTROLES */}
-                <div className="w-full flex-col flex justify-end pb-8">
+                <div className={`w-full flex-col flex justify-end ${currentState === STATES.WELCOME ? '' : 'pb-8'}`}>
 
-                    {/* Subtítulos */}
-                    <div className="w-full flex justify-center px-12 mb-8">
-                        {subtitle && !isTouch && !isAccessible && (
-                            <div className="w-full max-w-[800px]">
-                                <div className={`text-[1.3rem] font-bold text-white drop-shadow-xl leading-relaxed bg-black/50 px-8 py-6 rounded-3xl backdrop-blur-md border border-white/10 ${subtitle.includes('\n') ? 'text-left' : 'text-center'}`} style={{ whiteSpace: 'pre-line' }}>
-                                    {subtitle}
+                    {/* Contenedor Unificado: Subtítulo, Botones y Footer SIEMPRE VISIBLE LOGRANDO COHESIÓN GENERAL */}
+                    <div className="w-full bg-black/40 backdrop-blur-md pt-8 pb-8 border-t border-white/20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+                        
+                        {/* Subtítulos */}
+                        <div className={`w-full mb-8`}>
+                            {subtitle && currentState !== STATES.MENU && !isTouch && !isAccessible && (
+                                <div className="w-full px-12 md:px-24 max-w-[1400px] mx-auto text-center">
+                                    <p className={`text-[2.5rem] font-black text-white leading-[1.6] drop-shadow-2xl ${subtitle.includes('\n') ? 'text-left' : 'text-center'}`} style={{ whiteSpace: 'pre-line' }}>
+                                        {subtitle}
+                                    </p>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Botones y Vistas dinámicas */}
-                    <div className="w-full px-12 mb-10 flex flex-col items-center">
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={currentState}
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.3 }}
-                                className="w-full flex flex-col items-center gap-5"
-                            >
-                                {isAccessible && currentState !== STATES.LOGIN && currentState !== STATES.WELCOME
-                                    ? <div className="bg-white rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200 a11y-card">
-                                        <AccessibleMode currentState={currentState}>{renderContent()}</AccessibleMode>
-                                    </div>
-                                    : renderContent()
-                                }
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-
-                    {/* FOOTER - Logo fijo abajo */}
-                    <div className="w-full px-12 flex flex-col items-center justify-center opacity-90 mt-4 relative">
-                        <img
-                            src="/logo-duoc.png"
-                            alt="DUOC UC"
-                            className="h-12 object-contain"
-                            style={{ filter: 'brightness(0) invert(1)' }} // Logo en blanco
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                        <div className="absolute right-12 flex items-center gap-4">
-                            {session.inputMode && (
-                                <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-xl text-white/90 text-[0.9rem] font-semibold border border-white/10">
-                                    {isVoice && <><Mic size={14} /> Voz</>}
-                                    {isTouch && <><Monitor size={14} /> Táctil</>}
-                                    {isAccessible && !isTouch && <><Accessibility size={14} /> Accesible</>}
-                                </span>
                             )}
+                        </div>
+
+                        {/* Botones y Vistas dinámicas */}
+                        <div className={`w-full px-12 flex flex-col items-center ${currentState === STATES.WELCOME ? 'mb-6' : 'mb-10'}`}>
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={currentState}
+                                    initial={{ opacity: 0, y: 30 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -20 }}
+                                    transition={{ duration: 0.3 }}
+                                    className="w-full flex flex-col items-center gap-5"
+                                >
+                                    {isAccessible && currentState !== STATES.LOGIN && currentState !== STATES.WELCOME
+                                        ? <div className="bg-white rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200 a11y-card">
+                                            <AccessibleMode currentState={currentState}>{renderContent()}</AccessibleMode>
+                                        </div>
+                                        : renderContent()
+                                    }
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+
+                        {/* FOOTER - Logo fijo abajo */}
+                        <div className="w-full px-12 flex flex-col items-center justify-center opacity-90 mt-2 relative">
+                            <div className="flex items-center gap-4">
+                                <img
+                                    src="/logo-duoc.png"
+                                    alt="DUOC UC"
+                                    className="h-10 object-contain"
+                                    style={{ filter: 'brightness(0) invert(1)' }}
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                                <div className="w-[1px] h-8 bg-white/40"></div>
+                                <span className="text-white font-bold tracking-widest text-[1.1rem] uppercase drop-shadow-md">Sede San Bernardo</span>
+                            </div>
+                            
+                            <div className="absolute right-12 flex items-center gap-4">
+                                {session.inputMode && (
+                                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-xl text-white/90 text-[0.9rem] font-semibold border border-white/10 shadow-sm">
+                                        {isVoice && <><Mic size={14} /> Voz</>}
+                                        {isTouch && <><Monitor size={14} /> Táctil</>}
+                                        {isAccessible && !isTouch && <><Accessibility size={14} /> Accesible</>}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -945,7 +1040,7 @@ function App() {
                             </div>
                             <h2 className="text-4xl font-black text-white mb-4 drop-shadow-md">Atención requerida</h2>
                             <p className="text-2xl text-white/90 leading-relaxed drop-shadow-sm font-medium">
-                                Por políticas de seguridad del navegador, <strong>toca la pantalla una vez</strong> para habilitar el sonido e interactuar con Leonor.
+                                Por políticas de seguridad del navegador, <strong>toca la pantalla una vez</strong> para habilitar el sonido e interactuar con TanIA.
                             </p>
                         </div>
                     </motion.div>

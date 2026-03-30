@@ -7,6 +7,7 @@ export const STATES = {
     LOGIN: 'LOGIN',
     ACCESSIBILITY_SETUP: 'ACCESSIBILITY_SETUP', // New state for UserWay clone menu
     MENU: 'MENU',
+    SUB_MENU_ASESOR: 'SUB_MENU_ASESOR', // Nuevo estado Fase 1: Selección de Especialidad
     CONFIRMING: 'CONFIRMING',
     EXECUTING: 'EXECUTING',
     RESULT: 'RESULT',
@@ -23,6 +24,7 @@ export const EVENTS = {
     BIO_SUCCESS: 'BIO_SUCCESS',
     BIO_FAIL: 'BIO_FAIL',
     SELECT_OPTION: 'SELECT_OPTION',
+    SELECT_ASESOR_SUB_OPTION: 'SELECT_ASESOR_SUB_OPTION', // Selección (Academico, Práctica, Inclusión, Financiero)
     CONFIRM_YES: 'CONFIRM_YES',
     CONFIRM_NO: 'CONFIRM_NO',
     EXECUTE_SUCCESS: 'EXECUTE_SUCCESS',
@@ -159,8 +161,8 @@ export function transition(currentState, event, context) {
                 case EVENTS.SELECT_OPTION: {
                     const option = event.option;
                     if (option === 0) {
-                        newContext.ticketNumber = generateTicket();
-                        return { state: STATES.GOODBYE, context: newContext };
+                        // En la Fase 1 ya no da ticket inmediato. Pasa a Sub-Menú de Especialidad.
+                        return { state: STATES.SUB_MENU_ASESOR, context: newContext };
                     }
                     if (option >= 1 && option <= 4) {
                         newContext.selectedTramite = option;
@@ -177,6 +179,24 @@ export function transition(currentState, event, context) {
                 case EVENTS.TIMEOUT:
                     newContext.previousState = STATES.MENU;
                     return { state: STATES.INACTIVITY, context: newContext };
+                default:
+                    return { state: currentState, context };
+            }
+
+        // ─── SUB_MENU ASESOR (Fase 1) ───
+        case STATES.SUB_MENU_ASESOR:
+            switch (event.type) {
+                case EVENTS.SELECT_ASESOR_SUB_OPTION: {
+                    newContext.ticketNumber = generateTicket(event.prefix);
+                    return { state: STATES.GOODBYE, context: newContext };
+                }
+                case EVENTS.EXIT:
+                    return { state: STATES.GOODBYE, context: newContext };
+                case EVENTS.TIMEOUT:
+                    newContext.previousState = STATES.SUB_MENU_ASESOR;
+                    return { state: STATES.INACTIVITY, context: newContext };
+                case EVENTS.CONFIRM_NO: // Para volver al menú principal
+                    return { state: STATES.MENU, context: newContext };
                 default:
                     return { state: currentState, context };
             }
@@ -278,7 +298,7 @@ export function transition(currentState, event, context) {
     }
 }
 
-function generateTicket() {
-    const num = Math.floor(Math.random() * 9000) + 1000;
-    return `ASE-${num}`;
+function generateTicket(prefix = 'ASE') {
+    const num = Math.floor(Math.random() * 900) + 100; // Ej: 104, 305
+    return `${prefix}-${num}`;
 }

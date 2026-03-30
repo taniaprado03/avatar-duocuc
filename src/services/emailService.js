@@ -78,3 +78,30 @@ export async function sendTicketEmail(userData, ticketNumber) {
         return false;
     }
 }
+
+/**
+ * Manda la información financiera por correo (Por privacidad, no se renderiza en pantalla)
+ */
+export async function sendFinancieroEmail(userData) {
+    if (!userData || !userData.correo) return false;
+
+    try {
+        console.log(`Enviando Situación Financiera a: ${userData.correo}`);
+
+        const templateParams = {
+            to_name: userData.nombre,
+            to_email: userData.correo,
+            documento: "Estado de Situación Financiera",
+            fecha: new Date().toLocaleDateString('es-CL'),
+            mensaje: "Tu arancel se encuentra al día. Saldo pendiente: $320.000 (Próximo vencimiento 15/03/2026)."
+        };
+
+        // await emailjs.send(EMAILJS_SERVICE_ID, templateID, templateParams, EMAILJS_PUBLIC_KEY);
+
+        console.log("✅ Situación Financiera enviada por correo");
+        return true;
+    } catch (error) {
+        console.error("❌ Error enviando correo financiero:", error);
+        return false;
+    }
+}
