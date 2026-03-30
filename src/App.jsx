@@ -7,6 +7,7 @@ import { mapVoiceToOption, mapVoiceToAsesorSubOption } from './services/claudeSe
 import { loadModels, startDetection, stopDetection } from './services/presenceService';
 import { startCamera, stopCamera } from './services/facialRecognitionService';
 import { sendTicketEmail } from './services/emailService';
+import { logInteraction } from './services/firebaseService';
 import VIDEOS from './constants/videos';
 import TRAMITES from './constants/tramites';
 
@@ -343,7 +344,12 @@ function App() {
             const option = await mapVoiceToOption(transcript);
             speech.resetTranscript();
             transcriptRef.current = '';
-            if (option !== null) send({ type: EVENTS.SELECT_OPTION, option });
+            if (option !== null) {
+                if (option === 1) logInteraction('TRAMITE_VOZ', 'Certificado Alumno', context.userData?.rut);
+                if (option === 2) logInteraction('TRAMITE_VOZ', 'Horario', context.userData?.rut);
+                if (option === 0) logInteraction('PRE_ASESOR_VOZ', 'Menú Asesores', context.userData?.rut);
+                send({ type: EVENTS.SELECT_OPTION, option });
+            }
             else send({ type: EVENTS.NOT_UNDERSTOOD });
         } catch {
             send({ type: EVENTS.NOT_UNDERSTOOD });
@@ -362,7 +368,11 @@ function App() {
             const prefix = await mapVoiceToAsesorSubOption(transcript);
             speech.resetTranscript();
             transcriptRef.current = '';
-            if (prefix) send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix });
+            if (prefix) {
+                const areaNombres = { ACA: 'Académico', PRA: 'Práctica', INC: 'Inclusión', FIN: 'Financiero' };
+                logInteraction('ASESOR_FINAL_VOZ', areaNombres[prefix] || prefix, context.userData?.rut);
+                send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix });
+            }
             else send({ type: EVENTS.NOT_UNDERSTOOD });
         } catch {
             send({ type: EVENTS.NOT_UNDERSTOOD });
@@ -622,7 +632,12 @@ function App() {
             case STATES.MENU:
                 return (
                     <MainMenu
-                        onSelectOption={(option) => send({ type: EVENTS.SELECT_OPTION, option })}
+                        onSelectOption={(option) => {
+                            if (option === 1) logInteraction('TRAMITE_TACTIL', 'Certificado Alumno', context.userData?.rut);
+                            if (option === 2) logInteraction('TRAMITE_TACTIL', 'Horario', context.userData?.rut);
+                            if (option === 0) logInteraction('PRE_ASESOR_TACTIL', 'Menú Asesores', context.userData?.rut);
+                            send({ type: EVENTS.SELECT_OPTION, option });
+                        }}
                         isListening={speech.isListening}
                         transcript={speech.transcript}
                         modoAccesible={isAccessible}
@@ -648,7 +663,10 @@ function App() {
                             ].map((area) => (
                                 <button
                                     key={area.id}
-                                    onClick={() => send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id })}
+                                    onClick={() => {
+                                        logInteraction('ASESOR_FINAL_TACTIL', area.nombre, context.userData?.rut);
+                                        send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id });
+                                    }}
                                     className="group flex flex-col items-start gap-4 p-8 bg-white/10 hover:bg-white/20 backdrop-blur-xl border-2 border-white/20 hover:border-duoc-yellow rounded-[2.5rem] transition-all focus:outline-none focus:ring-4 focus:ring-duoc-yellow min-h-[170px]"
                                 >
                                     <div className="flex items-center gap-6 w-full">
