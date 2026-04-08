@@ -8,7 +8,7 @@ import { loadModels, startDetection, stopDetection } from './services/presenceSe
 import { startCamera, stopCamera } from './services/facialRecognitionService';
 import { fetchDocumentBase64 } from './services/documentService';
 import { createTicket } from './services/ticketService';
-import { sendTicketEmail, sendCertificadoEmail } from './services/emailService';
+import { sendTicketEmail, sendCertificadoEmail, sendHorarioEmail } from './services/emailService';
 import VIDEOS from './constants/videos';
 import TRAMITES from './constants/tramites';
 
@@ -414,6 +414,11 @@ function App() {
                     if (context.selectedTramite === 2 && context.userData) {
                         sendCertificadoEmail(context.userData, result.base64)
                             .catch(err => console.error("Error enviando certificado al correo:", err));
+                    }
+                    // Si es el trámite 1 (Horario), enviar el PDF real al correo
+                    else if (context.selectedTramite === 1 && context.userData) {
+                        sendHorarioEmail(context.userData, result.base64)
+                            .catch(err => console.error("Error enviando horario al correo:", err));
                     }
                 } else {
                     console.error("[App] Fallo en descargar doc:", result.error);

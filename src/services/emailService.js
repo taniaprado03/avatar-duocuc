@@ -44,6 +44,42 @@ export async function sendCertificadoEmail(userData, base64Pdf) {
 }
 
 /**
+ * Envía el horario con PDF adjunto por correo.
+ * @param {Object} userData - Datos del alumno { nombre, correo }
+ * @param {string} base64Pdf - PDF en base64
+ */
+export async function sendHorarioEmail(userData, base64Pdf) {
+    if (!userData || !userData.correo) return false;
+
+    try {
+        console.log(`Enviando Horario a: ${userData.correo}`);
+
+        const response = await fetch(`${EMAIL_API_BASE}/enviar_documento.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to_email: userData.correo,
+                to_name: userData.nombre,
+                documento: 'Horario de Clases',
+                base64: base64Pdf || ''
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            console.log("✅ Horario enviado con PDF adjunto");
+            return true;
+        } else {
+            console.error("❌ Error servidor:", result.message);
+            return false;
+        }
+    } catch (error) {
+        console.error("❌ Error enviando horario:", error);
+        return false;
+    }
+}
+
+/**
  * Envía el ticket de atención por correo.
  * @param {Object} userData - Datos del alumno { nombre, correo }
  * @param {string} ticketNumber - Número del ticket (ej: "ACA-015")

@@ -5,6 +5,10 @@
       "destination": "https://totem.ideainmotion.cl/:match*"
     },
     {
+      "source": "/api/tickets/:match*",
+      "destination": "https://cittsb.cl/asesor_totem/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
