@@ -82,6 +82,8 @@ const VideoAvatar = forwardRef(function VideoAvatar({ src, onEnded, onPlayError 
                 ref={videoRef1}
                 src={src1}
                 onEnded={() => handleEnded(1)}
+                muted
+                autoPlay
                 playsInline
                 className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-500 ease-in-out ${activeVideo === 1 ? 'opacity-100 z-10' : 'opacity-0 z-0'
                     }`}
@@ -91,6 +93,7 @@ const VideoAvatar = forwardRef(function VideoAvatar({ src, onEnded, onPlayError 
                 ref={videoRef2}
                 src={src2}
                 onEnded={() => handleEnded(2)}
+                muted
                 playsInline
                 className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-500 ease-in-out ${activeVideo === 2 ? 'opacity-100 z-10' : 'opacity-0 z-0'
                     }`}
