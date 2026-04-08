@@ -64,8 +64,8 @@ export function startDetection(videoElement, onFaceDetected) {
     stopDetection(); // Clear any previous loop
 
     const options = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 224,
-        scoreThreshold: 0.7
+        inputSize: 160,
+        scoreThreshold: 0.4
     });
 
     detectionInterval = setInterval(async () => {
@@ -74,7 +74,7 @@ export function startDetection(videoElement, onFaceDetected) {
         try {
             const detection = await faceapi.detectSingleFace(videoElement, options);
 
-            if (detection && detection.score > 0.7) {
+            if (detection && detection.score > 0.45) {
                 console.log(`🧑 Face detected (confidence: ${(detection.score * 100).toFixed(1)}%)`);
                 stopDetection();
                 if (onFaceDetected) {
@@ -84,7 +84,7 @@ export function startDetection(videoElement, onFaceDetected) {
         } catch (error) {
             // Silently ignore detection errors (e.g., video not ready)
         }
-    }, 800);
+    }, 500);
 }
 
 /**
