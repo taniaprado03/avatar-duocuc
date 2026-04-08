@@ -39,10 +39,10 @@ const VideoAvatar = forwardRef(function VideoAvatar({ src, onEnded, onPlayError 
     useEffect(() => {
         if (activeVideo === 1) {
             if (videoRef1.current) {
-                videoRef1.current.muted = false;
+                videoRef1.current.muted = true;
                 videoRef1.current.load();
                 const p = videoRef1.current.play();
-                if (p !== undefined) p.catch(err => { if (err.name === 'NotAllowedError' && onPlayError) onPlayError(); });
+                if (p !== undefined) p.then(() => { videoRef1.current.muted = false; }).catch(err => { if (err.name === 'NotAllowedError' && onPlayError) onPlayError(); });
             }
             if (videoRef2.current) {
                 const prev = videoRef2.current;
@@ -54,10 +54,10 @@ const VideoAvatar = forwardRef(function VideoAvatar({ src, onEnded, onPlayError 
             }
         } else {
             if (videoRef2.current) {
-                videoRef2.current.muted = false;
+                videoRef2.current.muted = true;
                 videoRef2.current.load();
                 const p = videoRef2.current.play();
-                if (p !== undefined) p.catch(err => { if (err.name === 'NotAllowedError' && onPlayError) onPlayError(); });
+                if (p !== undefined) p.then(() => { videoRef2.current.muted = false; }).catch(err => { if (err.name === 'NotAllowedError' && onPlayError) onPlayError(); });
             }
             if (videoRef1.current) {
                 const prev = videoRef1.current;
