@@ -151,6 +151,7 @@ function App() {
     const [faceModelsReady, setFaceModelsReady] = useState(false);
     const [idleCameraError, setIdleCameraError] = useState(false);
     const [detectingFace, setDetectingFace] = useState(false);
+    const [userPresent, setUserPresent] = useState(false);
     const [autoplayBlocked, setAutoplayBlocked] = useState(false);
     const [videoEnded, setVideoEnded] = useState(false);
 
@@ -488,6 +489,7 @@ function App() {
             stopDetection();
             if (idleStreamRef.current) { stopCamera(idleStreamRef.current); idleStreamRef.current = null; }
             setDetectingFace(false);
+            setUserPresent(false);
             return;
         }
         let cancelled = false;
@@ -504,8 +506,9 @@ function App() {
                         if (idleVideoRef.current?.readyState >= 2) {
                             setDetectingFace(true);
                             startDetection(idleVideoRef.current, () => {
-                                // Cuando face-api detecta un rostro en el frame, activamos el tótem automáticamente
-                                send({ type: EVENTS.DETECT_USER });
+                                // Cuando face-api detecta un rostro, mostramos botón
+                                setUserPresent(true);
+                                setDetectingFace(false);
                             });
                         } else setTimeout(poll, 300);
                     };
@@ -870,20 +873,20 @@ function App() {
                 className="w-[1080px] h-[1920px] overflow-hidden bg-white flex flex-col items-center justify-center relative"
                 onClick={() => send({ type: EVENTS.DETECT_USER })}
             >
+                {/* Seamless Loop Video Background - ALWAYS visible in IDLE */}
+                <SeamlessLoopVideo
+                    src="/videos/reposo_deteccion.mp4"
+                    className="absolute inset-0 w-full h-full opacity-50"
+                />
+
+                {/* Clear gradient overlay to make text pop */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/70 to-white/95" />
+
                 {!idleCameraError && (
                     <>
                         {/* THE ACTUAL WEBCAM FEED INVISIBLE FOR TF.JS */}
                         <video ref={idleVideoRef} autoPlay playsInline muted
                             className="absolute opacity-0 w-[1px] h-[1px] pointer-events-none" />
-
-                        {/* Seamless Loop Video Background for IDLE */}
-                        <SeamlessLoopVideo
-                            src="/videos/reposo_deteccion.mp4"
-                            className="absolute inset-0 w-full h-full opacity-50"
-                        />
-
-                        {/* Clear gradient overlay to make text pop */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/70 to-white/95" />
 
                         {/* Face detection radar effect */}
                         {detectingFace && (
@@ -909,11 +912,26 @@ function App() {
                     </div>
 
                     {/* Deteccing Face Indicator in BLACK */}
-                    {detectingFace && (
+                    {!userPresent && detectingFace && (
                         <div className="flex items-center gap-4 border-2 border-gray-200 font-bold text-[1.6rem] text-black bg-white/90 backdrop-blur-sm px-10 py-5 rounded-full shadow-lg mt-16 transition-all duration-300">
                             <span className="w-5 h-5 bg-green-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
                             Detectando rostro...
                         </div>
+                    )}
+
+                    {userPresent && (
+                        <motion.button
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="mt-16 bg-duoc-yellow hover:bg-yellow-500 text-black font-black text-[2.5rem] px-16 py-6 rounded-[3rem] shadow-[0_0_40px_rgba(251,191,36,0.6)] animate-pulse flex items-center justify-center gap-6 z-50 pointer-events-auto border-4 border-white"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                send({ type: EVENTS.DETECT_USER });
+                            }}
+                        >
+                            <Hand size={48} className="text-black" />
+                            Tocar para Iniciar
+                        </motion.button>
                     )}
                 </div>
             </div >
