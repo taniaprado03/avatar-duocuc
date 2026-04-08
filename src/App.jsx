@@ -6,8 +6,9 @@ import { useSpeech } from './hooks/useSpeech';
 import { mapVoiceToOption, mapVoiceToAsesorSubOption } from './services/claudeService';
 import { loadModels, startDetection, stopDetection } from './services/presenceService';
 import { startCamera, stopCamera } from './services/facialRecognitionService';
-import { sendTicketEmail } from './services/emailService';
-import { logInteraction } from './services/firebaseService';
+import { fetchDocumentBase64 } from './services/documentService';
+import { createTicket } from './services/ticketService';
+import { sendTicketEmail, sendCertificadoEmail } from './services/emailService';
 import VIDEOS from './constants/videos';
 import TRAMITES from './constants/tramites';
 
@@ -23,7 +24,8 @@ import {
     Monitor, Accessibility, RefreshCw, LogOut,
     CheckCircle, AlertTriangle, HelpCircle,
     Hand, Clock, Settings, Mic, CheckCircle2,
-    ArrowLeft, BookOpen, Briefcase, Heart, Landmark, Users
+    ArrowLeft, BookOpen, Briefcase, Heart, Landmark, Users,
+    Calendar, FileText
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════
@@ -34,7 +36,7 @@ const SUBTITLES = {
     LOGIN: 'Por favor mira directamente a la cámara para validar tu identidad.',
     LOGIN_SUCCESS: 'Identidad validada.',
     LOGIN_FAIL: 'No pude validar tu identidad. Por favor intenta de nuevo.',
-    MENU: (name) => `¿En qué puedo ayudarte hoy?\n• Di uno para Certificado de Alumno Regular\n• Di dos para Ver Horario\n• Di tres para Progreso Académico\n• Di cuatro para Situación Financiera\n• Di cinco para Preguntas Frecuentes\n• Di cero para ser atendido por un asesor académico`,
+    MENU: (name) => `¿En qué puedo ayudarte hoy? Toca una opción en la pantalla, o cuéntame qué necesitas:\n puedes consultar tu Horario, obtener tu Certificado de alumno regular o Solicitar atención con un asesor.`,
     CONFIRMING: '¿Confirmas tu selección? Di sí o no.',
     RESULT: 'Tu trámite fue procesado exitosamente. ¿Necesitas algo más? Di sí o no.',
     TRAMITE_ERROR: 'No fue posible completar tu trámite. ¿Deseas intentarlo nuevamente? Di sí o no.',
@@ -54,9 +56,11 @@ function getVideoForState(state, context, inputMode) {
             if (context.subState === 'login_success') return VIDEOS.LOGIN_SUCCESS;
             return VIDEOS.LOGIN_INSTRUCTIONS;
         case STATES.MENU:
+            if (context.subState === 'not_understood') return VIDEOS.NO_ENTENDI;
+            return VIDEOS.MENU;
         case STATES.SUB_MENU_ASESOR:
             if (context.subState === 'not_understood') return VIDEOS.NO_ENTENDI;
-            return (state === STATES.SUB_MENU_ASESOR) ? VIDEOS.ASESOR : VIDEOS.MENU;
+            return VIDEOS.ASESOR;
         case STATES.CONFIRMING: return VIDEOS.CONFIRMING;
         case STATES.EXECUTING:
             if (context.showRetryPrompt) return VIDEOS.TRAMITE_ERROR;
@@ -80,7 +84,7 @@ function getSubtitleForState(state, context) {
             return SUBTITLES.MENU(context.userData?.nombre || '');
         case STATES.SUB_MENU_ASESOR:
             if (context.subState === 'not_understood') return SUBTITLES.NO_ENTENDI;
-            return 'Elige tu Asesor: Di "Académico", "Práctica", "Inclusión" o "Financiero".';
+            return '¡Perfecto! ¿A qué área de asesoría necesitas dirigirte?\nToca una opción en la pantalla, o cuentame que necesitas: puedes elegir el área Académica, Práctica, Inclusión o el área Financiera.';
         case STATES.CONFIRMING: return SUBTITLES.CONFIRMING;
         case STATES.EXECUTING:
             if (context.showRetryPrompt) return SUBTITLES.TRAMITE_ERROR;
@@ -256,7 +260,7 @@ function App() {
        TRANSCRIPT HANDLERS
        ═══════════════════════════════════════════════ */
     useEffect(() => {
-        if (!speech.transcript || speech.transcript === transcriptRef.current || !videoEnded) return;
+        if (!speech.isFinal || !speech.transcript || speech.transcript === transcriptRef.current || !videoEnded) return;
         transcriptRef.current = speech.transcript;
 
         // Stop auto-restart immediately — we're processing this transcript
@@ -332,7 +336,8 @@ function App() {
             else { transcriptRef.current = ''; setTimeout(() => speech.startListening(), 400); }
             return;
         }
-    }, [speech.transcript, currentState, videoEnded]);
+
+    }, [speech.transcript, speech.isFinal, currentState, videoEnded]);
 
     /* ─── handleMenuVoice with processingRef guard ─── */
     async function handleMenuVoice(transcript) {
@@ -345,9 +350,6 @@ function App() {
             speech.resetTranscript();
             transcriptRef.current = '';
             if (option !== null) {
-                if (option === 1) logInteraction('TRAMITE_VOZ', 'Certificado Alumno', context.userData?.rut);
-                if (option === 2) logInteraction('TRAMITE_VOZ', 'Horario', context.userData?.rut);
-                if (option === 0) logInteraction('PRE_ASESOR_VOZ', 'Menú Asesores', context.userData?.rut);
                 send({ type: EVENTS.SELECT_OPTION, option });
             }
             else send({ type: EVENTS.NOT_UNDERSTOOD });
@@ -370,7 +372,6 @@ function App() {
             transcriptRef.current = '';
             if (prefix) {
                 const areaNombres = { ACA: 'Académico', PRA: 'Práctica', INC: 'Inclusión', FIN: 'Financiero' };
-                logInteraction('ASESOR_FINAL_VOZ', areaNombres[prefix] || prefix, context.userData?.rut);
                 send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix });
             }
             else send({ type: EVENTS.NOT_UNDERSTOOD });
@@ -386,7 +387,7 @@ function App() {
        SIDE EFFECTS
        ═══════════════════════════════════════════════ */
 
-    // EXECUTING: 95% success
+    // EXECUTING: Interacción con API real
     useEffect(() => {
         if (currentState !== STATES.EXECUTING || context.showRetryPrompt) {
             executingStarted.current = false;
@@ -395,18 +396,36 @@ function App() {
         if (executingStarted.current) return;
         executingStarted.current = true;
 
-        const ok = true; // Removed random failure for documentation generation
-        const t = setTimeout(() => {
-            if (ok) {
+        async function processDocument() {
+            try {
+                // Sacar RUT falso temporal hasta biometría, en demo userData puede tenerlo.
+                const rut = context.userData?.rut || '20668917k';
+                
                 const tr = TRAMITES.find(t => t.id === context.selectedTramite);
                 setTramiteResultText(tr?.resultado || 'Trámite completado.');
-                send({ type: EVENTS.EXECUTE_SUCCESS });
-            } else {
+
+                const result = await fetchDocumentBase64(context.selectedTramite, rut);
+                
+                if (result.success && result.base64) {
+                    send({ type: EVENTS.EXECUTE_SUCCESS, base64: result.base64 });
+                    
+                    // Si es el trámite 2 (Certificado), enviar el PDF real al correo
+                    if (context.selectedTramite === 2 && context.userData) {
+                        sendCertificadoEmail(context.userData, result.base64)
+                            .catch(err => console.error("Error enviando certificado al correo:", err));
+                    }
+                } else {
+                    console.error("[App] Fallo en descargar doc:", result.error);
+                    send({ type: EVENTS.EXECUTE_FAIL });
+                }
+            } catch (err) {
+                console.error("[App] Error general processing doc:", err);
                 send({ type: EVENTS.EXECUTE_FAIL });
             }
-        }, 2000);
-        return () => clearTimeout(t);
-    }, [currentState, context.showRetryPrompt]);
+        }
+        
+        processDocument();
+    }, [currentState, context.showRetryPrompt, context.selectedTramite, context.userData]);
 
     // GOODBYE timeout
     useEffect(() => {
@@ -417,10 +436,17 @@ function App() {
             sendTicketEmail(context.userData, context.ticketNumber).catch(err => console.error("Error enviando ticket:", err));
         }
 
-        // Simulación de envío GLPI (Esqueleto)
-        if (context.ticketNumber) {
-            console.log(`[GLPI SIMULADO] Se registra ticket ${context.ticketNumber} en sala de espera.`);
-            // A futuro: sendTicketToGLPI(context.ticketNumber); 
+        // Integración real con sistema de tickets (cittsb.cl)
+        if (context.ticketNumber && context.asesorPrefix) {
+            const rut = context.userData?.rut || '00000000';
+            const nombre = context.userData?.nombre || 'Alumno';
+            createTicket(rut, nombre, context.asesorPrefix)
+                .then(result => {
+                    if (result.success && result.ticketNumber) {
+                        console.log(`[GLPI] Ticket real creado: ${result.ticketNumber}`);
+                    }
+                })
+                .catch(err => console.error('[GLPI] Error creando ticket:', err));
         }
 
         const t = setTimeout(() => send({ type: EVENTS.VIDEO_ENDED }), 8000);
@@ -514,17 +540,19 @@ function App() {
 
     function renderVoiceYesNo(prompt) {
         if (!isVoice) return null;
-        if (!videoEnded) return <p className="text-white/50 text-sm animate-pulse mt-4">TanIA está hablando...</p>;
+        if (!videoEnded) return <p className="text-white/60 text-[1rem] font-medium tracking-wide animate-pulse mt-4">TanIA está hablando...</p>;
         return (
             <div className="flex flex-col items-center mt-6 gap-3">
                 {speech.isListening && (
-                    <div className="flex items-center gap-4 bg-[#FFFFFF] border border-gray-300 px-6 py-3 rounded-xl text-[#111111] font-bold text-[18px] shadow-sm min-h-[48px]">
-                        <div className="flex items-end gap-1 h-5">
-                            <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
-                            <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
-                            <span className="w-1 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
+                    <div className="flex items-center justify-center gap-5 bg-white px-8 py-4 rounded-full text-[#111111] font-bold text-[18px] shadow-2xl w-max">
+                        <div className="flex items-end gap-1.5 h-6">
+                            <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite] h-[40%]" />
+                            <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1.2s_ease-in-out_infinite_0.1s] h-[80%]" />
+                            <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_0.9s_ease-in-out_infinite_0.2s] h-[60%]" />
+                            <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1.1s_ease-in-out_infinite_0.3s] h-[100%]" />
+                            <span className="w-2 bg-duoc-yellow rounded-full animate-[voiceBar_1s_ease-in-out_infinite_0.4s] h-[50%]" />
                         </div>
-                        <span>{prompt}</span>
+                        <span className="tracking-wide">{prompt}</span>
                     </div>
                 )}
                 {speech.transcript && (
@@ -539,6 +567,12 @@ function App() {
     /* ════════════════════════════════════════════════
        RENDER: Content per state
        ════════════════════════════════════════════════ */
+    // Color de texto adaptativo: blanco sobre fondo de video (avatar)
+    // Pero en ALTO CONTRASTE (fondo negro) debe ser BLANCO/AMARILLO
+    const isHighContrast = accessSettings.highContrast;
+    const textColor = isHighContrast ? 'text-[#FFFFFF]' : 'text-white';
+    const textColorMuted = isHighContrast ? 'text-gray-300' : 'text-white/80';
+
     function renderContent() {
         switch (currentState) {
 
@@ -565,31 +599,33 @@ function App() {
                             <p className="text-white/60 text-[1rem] font-medium tracking-wide animate-pulse mb-8">TanIA está hablando...</p>
                         )}
 
-                        {/* Interactive Buttons */}
-                        <div className="flex flex-col gap-8 w-full max-w-[1000px] mt-4 px-10">
+                        {/* Interactive Buttons — Compactos para no tapar el avatar */}
+                        <div className="flex flex-col gap-5 w-full max-w-[900px] px-10">
                             <button
                                 aria-label="Iniciar modo pantalla táctil"
                                 data-action="primary"
                                 onClick={() => { session.setInputMode('TOUCH'); send({ type: EVENTS.START }); }}
-                                className="flex items-center justify-center gap-6 w-full min-h-[150px] py-8 rounded-[3rem] bg-white text-[#111111] font-black text-[56px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none"
+                                className="flex items-center justify-center gap-6 w-full min-h-[120px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[38px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none"
                             >
-                                <Monitor size={64} className="text-[#111111]" /> Iniciar
+                                <Monitor size={52} className="text-[#111111]" /> Iniciar
                             </button>
-                            <button
-                                aria-label="Repetir mensaje de bienvenida"
-                                onClick={() => { if (avatarRef.current) { avatarRef.current.replay(); setVideoEnded(false); speech.stopListening(); } }}
-                                className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none"
-                            >
-                                <RefreshCw size={40} className="text-white" /> Repetir
-                            </button>
-                            <button
-                                aria-label="Salir de la aplicación"
-                                data-action="back"
-                                onClick={() => send({ type: EVENTS.EXIT })}
-                                className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none"
-                            >
-                                <LogOut size={40} className="text-white" /> Salir
-                            </button>
+                            <div className="flex gap-4 w-full">
+                                <button
+                                    aria-label="Repetir mensaje de bienvenida"
+                                    onClick={() => { if (avatarRef.current) { avatarRef.current.replay(); setVideoEnded(false); speech.stopListening(); } }}
+                                    className="flex items-center justify-center gap-4 flex-1 min-h-[80px] py-4 rounded-[2rem] bg-black/40 border-2 border-white/30 text-white font-bold text-[28px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none"
+                                >
+                                    <RefreshCw size={32} className="text-white" /> Repetir
+                                </button>
+                                <button
+                                    aria-label="Salir de la aplicación"
+                                    data-action="back"
+                                    onClick={() => send({ type: EVENTS.EXIT })}
+                                    className="flex items-center justify-center gap-4 flex-1 min-h-[80px] py-4 rounded-[2rem] bg-black/40 border-2 border-white/30 text-white font-bold text-[28px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none"
+                                >
+                                    <LogOut size={32} className="text-white" /> Salir
+                                </button>
+                            </div>
                         </div>
                     </div>
                 );
@@ -633,9 +669,6 @@ function App() {
                 return (
                     <MainMenu
                         onSelectOption={(option) => {
-                            if (option === 1) logInteraction('TRAMITE_TACTIL', 'Certificado Alumno', context.userData?.rut);
-                            if (option === 2) logInteraction('TRAMITE_TACTIL', 'Horario', context.userData?.rut);
-                            if (option === 0) logInteraction('PRE_ASESOR_TACTIL', 'Menú Asesores', context.userData?.rut);
                             send({ type: EVENTS.SELECT_OPTION, option });
                         }}
                         isListening={speech.isListening}
@@ -652,7 +685,7 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-[1200px] mx-auto text-center px-8">
                         {!isVoice && <div className="text-duoc-yellow mb-4 drop-shadow-sm"><Users size={56} /></div>}
-                        {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">¿A qué área quieres dirigirte?</h2>}
+                        {!isVoice && <h2 className="text-[2.8rem] font-black mb-10 drop-shadow-lg text-white">¿A qué área quieres dirigirte?</h2>}
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
                             {[
@@ -664,13 +697,12 @@ function App() {
                                 <button
                                     key={area.id}
                                     onClick={() => {
-                                        logInteraction('ASESOR_FINAL_TACTIL', area.nombre, context.userData?.rut);
                                         send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id });
                                     }}
                                     className="group flex flex-col items-start gap-4 p-8 bg-white/10 hover:bg-white/20 backdrop-blur-xl border-2 border-white/20 hover:border-duoc-yellow rounded-[2.5rem] transition-all focus:outline-none focus:ring-4 focus:ring-duoc-yellow min-h-[170px]"
                                 >
                                     <div className="flex items-center gap-6 w-full">
-                                        <div className="flex items-center justify-center w-[80px] h-[80px] bg-duoc-blue text-white rounded-2xl shadow-inner border-2 border-white/20">
+                                        <div className="text-white drop-shadow-sm ml-2">
                                             {area.icon}
                                         </div>
                                         <h3 className="text-3xl font-black text-white leading-tight flex-1 text-left">{area.nombre}</h3>
@@ -696,11 +728,11 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-3xl mx-auto text-center">
                         {!isVoice && <div className="text-duoc-yellow mb-6 drop-shadow-sm"><HelpCircle size={56} /></div>}
-                        {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Confirmar Trámite</h2>}
+                        {!isVoice && <h2 className={`text-4xl font-black mb-8 drop-shadow-md ${textColor}`}>Confirmar Trámite</h2>}
 
                         <div className="a11y-inner-card flex flex-col items-start gap-4 bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-[2.5rem] p-8 shadow-2xl w-full max-w-2xl mx-auto mb-10 transition-all min-h-[170px]">
                             <div className="flex items-center gap-6 w-full">
-                                <span className="shrink-0 flex items-center justify-center w-[80px] h-[80px] rounded-2xl bg-white/20 text-white font-black text-[36px] border-[2px] border-white/20 shadow-inner">{tramite?.id}</span>
+                                <span className="shrink-0 flex items-center justify-center w-[80px] h-[80px] rounded-2xl bg-white/20 text-white font-black text-[30px] border-[2px] border-white/20 shadow-inner">{tramite?.id === 1 ? <Calendar size={40} /> : <FileText size={40} />}</span>
                                 <h3 className="text-[32px] font-black text-white leading-tight break-words text-left">{tramite?.nombre}</h3>
                             </div>
                             <p className="text-[1.3rem] font-medium opacity-90 text-white mt-3 line-clamp-2 text-left w-full">{tramite?.descripcion}</p>
@@ -711,9 +743,9 @@ function App() {
 
                         <div className="flex flex-col gap-6 w-full max-w-[1000px] mx-auto mt-8 px-12" role="group" aria-label="Confirmar o cancelar trámite">
                             <button aria-label="Sí, confirmar trámite" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.CONFIRM_YES })}>
-                                <CheckCircle size={40} className="text-[#111111]" /> Sí, continuar
+                                <CheckCircle size={40} /> Sí, continuar
                             </button>
-                            <button aria-label="No, volver al menú principal" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
+                            <button aria-label="No, volver al menú principal" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[30px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.CONFIRM_NO })}>
                                 <ArrowLeft size={40} className="text-white" /> No, volver al menú
                             </button>
                         </div>
@@ -731,7 +763,7 @@ function App() {
                             {renderVoiceYesNo('Di "sí" o "no"')}
                             <div className="flex flex-col gap-6 w-full max-w-[1000px] mx-auto mt-8 px-12" role="group" aria-label="Reintentar o cancelar">
                                 <button aria-label="Sí, reintentar trámite" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.RETRY_YES })}>
-                                    <RefreshCw size={40} className="text-[#111111]" /> Sí, reintentar
+                                    <RefreshCw size={40} /> Sí, reintentar
                                 </button>
                                 <button aria-label="No, volver al menú" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.RETRY_NO })}>
                                     <ArrowLeft size={40} className="text-white" /> No, volver al menú
@@ -757,15 +789,15 @@ function App() {
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto text-center">
                         {!isVoice && <div className="text-green-500 mb-4 drop-shadow-sm"><CheckCircle2 size={56} /></div>}
-                        {!isVoice && <h2 className="text-4xl font-black text-white mb-8 drop-shadow-md">Trámite Exitoso</h2>}
-                        <ResultCard tramiteId={context.selectedTramite} resultado={tramiteResultText} userData={context.userData} />
+                        {!isVoice && <h2 className={`text-4xl font-black mb-8 drop-shadow-md ${textColor}`}>Trámite Exitoso</h2>}
+                        <ResultCard tramiteId={context.selectedTramite} resultado={tramiteResultText} userData={context.userData} base64={context.documentoPdf} />
 
                         <div className="mt-8 w-full max-w-2xl mx-auto">
                             {!isVoice && renderSubtitle(subtitle)}
                             {renderVoiceYesNo('Di "sí" o "no"')}
                             <div className="flex flex-col gap-6 w-full max-w-[1000px] mx-auto mt-8 px-12" role="group" aria-label="Más trámites o finalizar">
                                 <button aria-label="Sí, realizar otro trámite" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.MORE_YES })}>
-                                    <CheckCircle size={40} className="text-[#111111]" /> Sí, otro trámite
+                                    <CheckCircle size={40} /> Sí, otro trámite
                                 </button>
                                 <button aria-label="No, finalizar sesión" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.MORE_NO })}>
                                     <Hand size={40} className="text-white" /> No, finalizar
@@ -783,18 +815,23 @@ function App() {
 
             case STATES.GOODBYE:
                 return (
-                    <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto text-center">
-                        {!isVoice && <h2 className="text-5xl font-black text-white mb-8 drop-shadow-md">Fue un placer ayudarte. ¡Hasta pronto!</h2>}
-                        {!isVoice && renderSubtitle(subtitle)}
+                    <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto text-center">
+                        {/* El subtítulo se oculta en App.jsx para este estado buscando evitar redundancia */}
+                        <div className="flex flex-col items-center">
+                            <h3 className={`text-[3.5rem] font-black mb-4 drop-shadow-2xl text-white`}>
+                                ¡Ha sido un placer ayudarte!
+                            </h3>
+                            <p className={`font-black text-[1.8rem] animate-pulse text-white/80`}>Volviendo al inicio...</p>
+                        </div>
+                        
                         {context.ticketNumber && (
-                            <div className="flex flex-col items-center bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-10 shadow-2xl w-full mb-8 relative overflow-hidden">
+                            <div className={`flex flex-col items-center rounded-[2.5rem] p-10 shadow-2xl w-full max-w-2xl mt-8 mb-8 relative overflow-hidden border-2 border-white/20 backdrop-blur-md bg-black/20`}>
                                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-duoc-yellow to-duoc-yellow-dark" />
-                                <span className="text-white/60 tracking-[0.2em] font-bold uppercase text-[15px] mb-4">Tu ticket de atención</span>
-                                <div className="text-[5rem] font-black text-duoc-yellow drop-shadow-md tracking-widest">{context.ticketNumber}</div>
-                                <span className="text-white/90 mt-6 font-medium text-[20px]">Presenta este número en el mesón de atención</span>
+                                <span className={`tracking-[0.2em] font-bold uppercase text-[15px] mb-4 text-white/70`}>Tu ticket de atención</span>
+                                <div className={`text-[6rem] font-black drop-shadow-md tracking-widest text-duoc-yellow`}>{context.ticketNumber}</div>
+                                <span className={`mt-6 font-semibold text-[22px] text-white/90`}>Presenta este número en el mesón de atención</span>
                             </div>
                         )}
-                        <p className="text-gray-400 font-medium text-xl mt-4 animate-pulse">Volviendo al inicio...</p>
                     </div>
                 );
 
@@ -810,7 +847,7 @@ function App() {
                         
                         <div className="flex flex-col gap-6 w-full mt-8 px-12" role="group" aria-label="Continuar o salir">
                             <button aria-label="Sí, continuar con la sesión" data-action="primary" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-white text-[#111111] font-black text-[36px] hover:scale-[1.02] transition-all shadow-2xl focus:outline-none" onClick={() => send({ type: EVENTS.CONTINUE })}>
-                                <CheckCircle size={40} className="text-[#111111]" /> Sí, continuar
+                                <CheckCircle size={40} /> Sí, continuar
                             </button>
                             <button aria-label="No, cerrar sesión" data-action="back" className="flex items-center justify-center gap-5 w-full min-h-[100px] py-6 rounded-[2.5rem] bg-black/40 border-4 border-white/50 text-white font-bold text-[36px] backdrop-blur-md hover:bg-white/20 transition-all focus:outline-none" onClick={() => send({ type: EVENTS.EXIT })}>
                                 <LogOut size={40} className="text-white" /> No, salir
@@ -913,15 +950,21 @@ function App() {
 
             {/* 1. VIDEO DE FONDO A PANTALLA COMPLETA */}
             <div className="absolute inset-0 z-0 bg-black">
-                {((isTouch || isAccessible) && currentState !== STATES.WELCOME) ? (
-                    <img src="/imagen-pantalla.jpeg" alt="Fondo" className="absolute inset-0 w-full h-full object-cover z-0" />
+                {((isTouch || isAccessible) && currentState !== STATES.WELCOME && currentState !== STATES.LOGIN && currentState !== STATES.GOODBYE) ? (
+                    <SeamlessLoopVideo src="/videos/reposo_deteccion.mp4" className="absolute inset-0 w-full h-full z-0" />
                 ) : (
-                    <VideoAvatar
-                        ref={avatarRef}
-                        src={videoSrc}
-                        onEnded={handleVideoEnded}
-                        onPlayError={() => setAutoplayBlocked(true)}
-                    />
+                    <>
+                        {/* Mantenemos el video siempre visible al 100% de opacidad para que el finalizador del video quede congelado en su último frame de forma transparente, sin fade artificial que genere saltos. */}
+                        <img src="/imagen-pantalla.png" alt="Fondo" className="absolute inset-0 w-full h-full object-cover z-0" />
+                        <div className="absolute inset-0 z-[1]">
+                            <VideoAvatar
+                                ref={avatarRef}
+                                src={videoSrc}
+                                onEnded={handleVideoEnded}
+                                onPlayError={() => setAutoplayBlocked(true)}
+                            />
+                        </div>
+                    </>
                 )}
                 {/* Gradiente muy traslúcido abajo para que destaquen textos blancos / botones */}
                 <div className="absolute inset-x-0 bottom-0 h-[45%] bg-gradient-to-t from-black/40 via-black/10 to-transparent pointer-events-none" />
@@ -976,11 +1019,11 @@ function App() {
                     {/* Contenedor Unificado: Subtítulo, Botones y Footer SIEMPRE VISIBLE LOGRANDO COHESIÓN GENERAL */}
                     <div className="w-full bg-black/40 backdrop-blur-md pt-8 pb-8 border-t border-white/20 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
                         
-                        {/* Subtítulos */}
+                        {/* Subtítulos: Siempre visibles en VOZ. En WELCOME y LOGIN se muestran en todos los modos. */}
                         <div className={`w-full mb-8`}>
-                            {subtitle && currentState !== STATES.MENU && !isTouch && !isAccessible && (
+                            {subtitle && (isVoice || currentState === STATES.WELCOME || currentState === STATES.LOGIN) && currentState !== STATES.GOODBYE && (
                                 <div className="w-full px-12 md:px-24 max-w-[1400px] mx-auto text-center">
-                                    <p className={`text-[2.5rem] font-black text-white leading-[1.6] drop-shadow-2xl ${subtitle.includes('\n') ? 'text-left' : 'text-center'}`} style={{ whiteSpace: 'pre-line' }}>
+                                    <p className={`text-white leading-[1.6] drop-shadow-2xl ${currentState === STATES.LOGIN ? 'text-[2.4rem] font-black' : 'text-[1.6rem] font-bold'} ${subtitle.includes('\n') ? 'text-left' : 'text-center'}`} style={{ whiteSpace: 'pre-line' }}>
                                         {subtitle}
                                     </p>
                                 </div>
@@ -999,7 +1042,7 @@ function App() {
                                     className="w-full flex flex-col items-center gap-5"
                                 >
                                     {isAccessible && currentState !== STATES.LOGIN && currentState !== STATES.WELCOME
-                                        ? <div className="bg-white rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200 a11y-card">
+                                        ? <div className="rounded-[3rem] p-10 w-full shadow-2xl border border-gray-200 a11y-card">
                                             <AccessibleMode currentState={currentState}>{renderContent()}</AccessibleMode>
                                         </div>
                                         : renderContent()

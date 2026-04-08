@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/ideainmotion/:match*",
+      "destination": "https://totem.ideainmotion.cl/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

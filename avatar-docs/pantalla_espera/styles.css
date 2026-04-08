@@ -1,0 +1,132 @@
+/* Variables */
+:root {
+    --duoc-blue: #003D7A;
+    --duoc-yellow: #FFB800;
+}
+
+/* Body */
+body {
+    font-family: 'Arial Black', sans-serif;
+    margin: 0;
+    background-color: #1a1a1a;
+    color: white;
+    overflow: hidden;
+}
+
+/* Header */
+header {
+    background: var(--duoc-blue);
+    padding: 10px 30px;
+    border-bottom: 8px solid var(--duoc-yellow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+}
+
+.logo-container img {
+    height: 70px; /* Tamaño ideal para que destaque sin saturar */
+    width: auto;
+    display: block;
+}
+
+.header-center {
+    text-align: center;
+    flex-grow: 1;
+}
+
+.header-right {
+    text-align: right;
+    min-width: 250px;
+}
+
+#reloj {
+    font-size: 38px;
+    font-weight: bold;
+    margin: 0;
+    line-height: 1;
+}
+
+#fecha {
+    font-size: 18px;
+    color: var(--duoc-yellow);
+    text-transform: capitalize;
+    margin-top: 5px;
+}
+
+/* Container */
+.container {
+    display: flex;
+    height: 80vh;
+    padding: 20px;
+    gap: 20px;
+}
+
+/* Main call section */
+.main-call {
+    flex: 2;
+    background: #222;
+    border-radius: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.main-call h2 {
+    font-size: 50px;
+    color: var(--duoc-yellow);
+    margin: 0;
+}
+
+.ticket-number {
+    font-size: 250px;
+    line-height: 1;
+    margin: 20px 0;
+}
+
+.mesa-number {
+    font-size: 80px;
+    background: var(--duoc-blue);
+    padding: 10px 40px;
+    border-radius: 20px;
+}
+
+/* History section */
+.history {
+    flex: 1;
+    background: #333;
+    border-radius: 30px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.history h3 {
+    font-size: 30px;
+    border-bottom: 3px solid #555;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 40px;
+    padding: 15px 0;
+    border-bottom: 1px solid #444;
+}
+
+.history-item span {
+    color: var(--duoc-yellow);
+}
+
+/* Animation */
+.blink {
+    animation: blinker 1s linear 5;
+}
+
+@keyframes blinker {
+    50% {
+        opacity: 0;
+    }
+}

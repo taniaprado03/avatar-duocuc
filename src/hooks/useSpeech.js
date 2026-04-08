@@ -11,6 +11,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
  */
 export function useSpeech() {
     const [transcript, setTranscript] = useState('');
+    const [isFinal, setIsFinal] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [isSupported, setIsSupported] = useState(true);
 
@@ -37,10 +38,10 @@ export function useSpeech() {
             const text = lastResult[0].transcript;
 
             if (lastResult.isFinal) {
-                // Final confirmed result — pass it up
+                setIsFinal(true);
                 setTranscript(text);
             } else {
-                // Interim result — show it immediately for responsiveness
+                setIsFinal(false);
                 setTranscript(text);
             }
         };
@@ -98,6 +99,7 @@ export function useSpeech() {
     const startListening = useCallback(() => {
         shouldListenRef.current = true;
         setTranscript('');
+        setIsFinal(false);
         if (!listeningRef.current && !cooldownRef.current) {
             doStart();
         }
@@ -113,7 +115,8 @@ export function useSpeech() {
 
     const resetTranscript = useCallback(() => {
         setTranscript('');
+        setIsFinal(false);
     }, []);
 
-    return { transcript, isListening, isSupported, startListening, stopListening, resetTranscript };
+    return { transcript, isFinal, isListening, isSupported, startListening, stopListening, resetTranscript };
 }

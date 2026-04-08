@@ -37,20 +37,20 @@ function CertificadoCard({ userData }) {
                 ✓ GENERADO
             </div>
 
-            <h3 className="text-4xl font-black text-white mb-8 border-b-2 border-white/20 pb-6 drop-shadow-md">Detalle del Certificado</h3>
+            <h3 className="text-3xl font-black text-white mb-8 border-b-2 border-white/20 pb-6 drop-shadow-md">Detalle del Certificado</h3>
 
             <div className="flex flex-col gap-6">
                 {rows.map(({ label, value }) => (
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-white/10 last:border-0" key={label}>
-                        <span className="text-white/70 text-[20px] font-bold uppercase tracking-widest">{label}</span>
-                        <span className={`text-[26px] font-black ${label === 'Estado' ? 'text-green-400 drop-shadow-sm' : 'text-white'}`}>{value}</span>
+                        <span className="text-white/70 text-[17px] font-bold uppercase tracking-widest">{label}</span>
+                        <span className={`text-[22px] font-black ${label === 'Estado' ? 'text-green-400 drop-shadow-sm' : 'text-white'}`}>{value}</span>
                     </div>
                 ))}
             </div>
 
             {userData && (
                 <div className="mt-10 flex items-center justify-center gap-4 bg-green-500/20 text-green-300 px-8 py-6 rounded-[2rem] border-2 border-green-500/30 mb-4 shadow-inner">
-                    <span className="text-[22px] font-bold animate-pulse text-center leading-relaxed">Este documento ha sido enviado exitosamente al correo: <br/><span className="text-white text-[24px] font-black">{userData.correo}</span></span>
+                    <span className="text-[18px] font-bold animate-pulse text-center leading-relaxed">Este documento ha sido enviado exitosamente al correo: <br/><span className="text-white text-[20px] font-black">{userData.correo}</span></span>
                 </div>
             )}
 
@@ -74,8 +74,8 @@ function HorarioCard() {
     return (
         <div className="a11y-inner-card w-full max-w-5xl bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-[2.5rem] overflow-hidden shadow-2xl">
             <div className="bg-white/10 px-12 py-8 border-b-2 border-white/20 backdrop-blur-md">
-                <h3 className="text-[42px] font-black text-white drop-shadow-md">Tu Horario Académico</h3>
-                <p className="text-duoc-yellow text-[20px] font-black mt-2 uppercase tracking-widest">Semestre 1 - 2026</p>
+                <h3 className="text-[34px] font-black text-white drop-shadow-md">Tu Horario Académico</h3>
+                <p className="text-duoc-yellow text-[17px] font-black mt-2 uppercase tracking-widest">Semestre 1 - 2026</p>
             </div>
             <div className="overflow-x-auto p-6">
                 <table className="w-full text-left border-collapse">
@@ -89,11 +89,11 @@ function HorarioCard() {
                     <tbody className="divide-y divide-white/10">
                         {HORARIO.map((row, i) => (
                             <tr key={i} className="hover:bg-white/10 transition-colors group">
-                                <td className="px-8 py-6 text-white font-black text-[24px] group-hover:text-duoc-yellow transition-colors">{row.dia}</td>
-                                <td className="px-8 py-6 text-white/80 font-mono font-bold text-[22px]">{row.hora}</td>
-                                <td className="px-8 py-6 text-white font-black text-[24px] drop-shadow-sm">{row.asignatura}</td>
+                                <td className="px-8 py-6 text-white font-black text-[20px] group-hover:text-duoc-yellow transition-colors">{row.dia}</td>
+                                <td className="px-8 py-6 text-white/80 font-mono font-bold text-[18px]">{row.hora}</td>
+                                <td className="px-8 py-6 text-white font-black text-[20px] drop-shadow-sm">{row.asignatura}</td>
                                 <td className="px-8 py-6">
-                                    <span className="inline-block bg-white/20 text-white font-black px-6 py-3 rounded-2xl text-[20px] backdrop-blur-md border border-white/20 shadow-inner">
+                                    <span className="inline-block bg-white/20 text-white font-black px-6 py-3 rounded-2xl text-[17px] backdrop-blur-md border border-white/20 shadow-inner">
                                         {row.sala}
                                     </span>
                                 </td>
@@ -122,12 +122,12 @@ function ProgresoCard() {
         <div className="a11y-inner-card w-full max-w-4xl bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-[2.5rem] p-12 shadow-2xl">
             <div className="flex flex-col sm:flex-row items-center justify-between mb-10 pb-8 border-b-2 border-white/20 gap-8">
                 <div>
-                    <h3 className="text-[42px] font-black text-white drop-shadow-md">Progreso Académico</h3>
-                    <p className="text-white/70 text-[22px] font-bold mt-2">Rendimiento actual ponderado</p>
+                    <h3 className="text-[34px] font-black text-white drop-shadow-md">Progreso Académico</h3>
+                    <p className="text-white/70 text-[18px] font-bold mt-2">Rendimiento actual ponderado</p>
                 </div>
                 <div className="flex items-center gap-6 bg-black/30 px-10 py-6 rounded-[2.5rem] border-2 border-white/10 shadow-inner">
                     <span className="text-white/60 uppercase tracking-widest text-[18px] font-black">Promedio</span>
-                    <span className="text-[4rem] leading-none font-black text-white drop-shadow-2xl">{PROMEDIO}</span>
+                    <span className="text-[3.2rem] leading-none font-black text-white drop-shadow-2xl">{PROMEDIO}</span>
                 </div>
             </div>
 
@@ -140,9 +140,9 @@ function ProgresoCard() {
                     return (
                         <div className="flex flex-col gap-4" key={nombre}>
                             <div className="flex justify-between items-end">
-                                <span className="text-white font-black text-[28px] leading-tight drop-shadow-sm">{nombre}</span>
+                                <span className="text-white font-black text-[22px] leading-tight drop-shadow-sm">{nombre}</span>
                                 <div className="flex items-baseline gap-5">
-                                    <span className={`text-[36px] font-black drop-shadow-md ${colorClass}`}>{nota.toFixed(1)}</span>
+                                    <span className={`text-[30px] font-black drop-shadow-md ${colorClass}`}>{nota.toFixed(1)}</span>
                                     <span className="text-[18px] text-white/50 uppercase font-black tracking-widest">{creditos} cr.</span>
                                 </div>
                             </div>
@@ -170,14 +170,14 @@ function FinancieroCard({ userData }) {
             <div className="bg-green-500/20 text-green-400 rounded-[2.5rem] w-36 h-36 flex items-center justify-center mb-10 shadow-inner border-2 border-green-500/30">
                 <ShieldCheck size={72} />
             </div>
-            <h3 className="text-[48px] font-black text-white mb-8 drop-shadow-md">¡Detalle Enviado!</h3>
-            <p className="text-[22px] text-white/90 mb-12 max-w-2xl leading-relaxed font-bold">
+            <h3 className="text-[40px] font-black text-white mb-8 drop-shadow-md">¡Detalle Enviado!</h3>
+            <p className="text-[18px] text-white/90 mb-12 max-w-2xl leading-relaxed font-bold">
                 Por motivos de privacidad y seguridad, no renderizamos tu información financiera en esta pantalla pública.
                 <br /><br />
                 Hemos enviado de forma segura el detalle de tus aranceles y saldos a tu correo institucional.
             </p>
             {userData?.correo && (
-                <div className="bg-white/10 text-white px-10 py-6 rounded-2xl font-black text-[24px] border-2 border-white/20 shadow-sm animate-pulse">
+                <div className="bg-white/10 text-white px-10 py-6 rounded-2xl font-black text-[20px] border-2 border-white/20 shadow-sm animate-pulse">
                     Enviado a: {userData.correo}
                 </div>
             )}
@@ -208,12 +208,12 @@ const FAQS = [
 function FAQCard() {
     return (
         <div className="a11y-inner-card w-full max-w-4xl bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-[2.5rem] p-12 shadow-2xl relative overflow-hidden">
-            <h3 className="text-[42px] font-black text-white mb-10 border-b-2 border-white/20 pb-6 drop-shadow-md">Preguntas Frecuentes</h3>
+            <h3 className="text-[34px] font-black text-white mb-10 border-b-2 border-white/20 pb-6 drop-shadow-md">Preguntas Frecuentes</h3>
             <div className="flex flex-col gap-6">
                 {FAQS.map((faq, idx) => (
                     <div key={idx} className="bg-white/10 border-2 border-white/20 rounded-[2rem] p-8 hover:bg-white/20 transition-all shadow-sm">
-                        <h4 className="text-[28px] font-black text-white mb-4 leading-tight drop-shadow-sm">{faq.pregunta}</h4>
-                        <p className="text-[22px] text-white/90 leading-relaxed font-medium">{faq.respuesta}</p>
+                        <h4 className="text-[22px] font-black text-white mb-4 leading-tight drop-shadow-sm">{faq.pregunta}</h4>
+                        <p className="text-[18px] text-white/90 leading-relaxed font-medium">{faq.respuesta}</p>
                     </div>
                 ))}
             </div>
@@ -224,11 +224,42 @@ function FAQCard() {
     );
 }
 
+/* ─── Visor Real de PDF desde API ─── */
+function DocumentViewerCard({ base64, userData, tramiteId }) {
+    const title = tramiteId === 1 ? 'Tu Horario de Clases' : 'Tu Certificado de Alumno Regular';
+
+    return (
+        <div className="a11y-inner-card w-full max-w-4xl bg-white/10 backdrop-blur-xl border-2 border-white/20 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden flex flex-col items-center">
+            <h3 className="text-[26px] font-black text-white mb-6 border-b-2 border-white/20 pb-4 drop-shadow-md w-full">{title}</h3>
+            
+            <div className="w-full bg-white rounded-2xl overflow-hidden h-[450px] shadow-inner border border-gray-200">
+                 <iframe 
+                    src={`data:application/pdf;base64,${base64}#toolbar=0&navpanes=0&scrollbar=0`} 
+                    className="w-full h-full"
+                    title="Visor de Documento"
+                 />
+            </div>
+
+            {userData && tramiteId === 2 && (
+                <div className="mt-8 flex flex-col items-center justify-center p-4 bg-green-500/20 text-green-300 rounded-[1.5rem] border-2 border-green-500/30 w-full shadow-sm">
+                    <span className="text-[17px] font-bold text-center">Enviado exitosamente a:</span>
+                    <span className="text-white text-[20px] font-black mt-1">{userData.correo}</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ─── Exports ─── */
-export default function ResultCard({ tramiteId, userData, resultado }) {
+export default function ResultCard({ tramiteId, userData, resultado, base64 }) {
+    // Si la API devolvió un PDF real, lo mostramos (aplica para Horario y Certificado)
+    if (base64 && (tramiteId === 1 || tramiteId === 2)) {
+        return <DocumentViewerCard base64={base64} userData={userData} tramiteId={tramiteId} />;
+    }
+
     switch (tramiteId) {
-        case 1: return <CertificadoCard userData={userData} />;
-        case 2: return <HorarioCard />;
+        case 1: return <HorarioCard />;
+        case 2: return <CertificadoCard userData={userData} />;
         case 3: return <ProgresoCard />;
         case 4: return <FinancieroCard userData={userData} />;
         case 5: return <FAQCard />;

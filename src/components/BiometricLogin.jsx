@@ -69,12 +69,8 @@ function CameraPreview({ onFaceMatched, onFail, inputMode }) {
     }
 
     return (
-        <div className="flex flex-col items-center w-full max-w-md mx-auto relative z-20 mt-32">
-            {inputMode !== 'VOICE' && (
-                <div className="bg-[#FFFFFF] border-2 border-transparent rounded-xl px-8 py-4 mb-6 shadow-md text-center w-full max-w-sm">
-                    <p className="text-[#111111] text-[20px] font-bold leading-relaxed">Mira directamente a la cámara para validar tu identidad.</p>
-                </div>
-            )}
+        <div className="flex flex-col items-center w-full max-w-md mx-auto relative z-20 mt-16">
+
             <div className="relative w-80 h-96 rounded-2xl overflow-hidden bg-black/40 backdrop-blur-md border border-white/20 shadow-2xl flex items-center justify-center">
                 {/* The actual webcam feed must be present for tf.js but hidden visually */}
                 <video ref={videoRef} autoPlay playsInline muted className="absolute opacity-0 pointer-events-none w-[1px] h-[1px]" />
@@ -128,16 +124,16 @@ export default function BiometricLogin({ onSuccess, onFail, reintentosBio, showA
         return (
             <div className="flex flex-col items-center justify-center w-full max-w-lg bg-white border border-red-200 rounded-3xl p-8 sm:p-10 shadow-lg text-center mx-auto">
                 <div className="text-red-500 mb-4 drop-shadow-sm"><UserX size={48} /></div>
-                <h2 className="text-3xl font-black text-duoc-blue mb-2">Verificación no exitosa</h2>
-                <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+                <h2 className="text-2xl font-black text-duoc-blue mb-2">Verificación no exitosa</h2>
+                <p className="text-gray-600 text-base mb-6 leading-relaxed">
                     No pude validarte. Por favor intenta de nuevo.
                 </p>
                 <p className="text-gray-800 font-medium mb-8">¿Deseas ser derivado a un asesor presencial?</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                    <button className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[18px] hover:bg-gray-50 transition-colors shadow-sm min-h-[48px]" onClick={onAsesorYes}>
+                    <button className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[16px] hover:bg-gray-50 transition-colors shadow-sm min-h-[48px]" onClick={onAsesorYes}>
                         <CheckCircle size={22} className="text-[#111111]" /> Sí, derivar a asesor
                     </button>
-                    <button className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[18px] hover:bg-gray-50 transition-colors shadow-sm min-h-[48px]" onClick={onAsesorNo}>
+                    <button className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-white border border-gray-300 text-[#111111] font-bold text-[16px] hover:bg-gray-50 transition-colors shadow-sm min-h-[48px]" onClick={onAsesorNo}>
                         <XCircle size={22} className="text-[#111111]" /> No, salir
                     </button>
                 </div>
@@ -167,10 +163,10 @@ export default function BiometricLogin({ onSuccess, onFail, reintentosBio, showA
                     <ShieldCheck size={14} /> Simulación ({BIOMETRIC_MODE})
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                    <button className="flex justify-center items-center gap-2 py-3 bg-[#FFFFFF] text-[#111111] border-2 border-transparent shadow-sm rounded-xl font-bold text-[18px] hover:bg-gray-50 min-h-[48px]" onClick={onSuccess}>
+                    <button className="flex justify-center items-center gap-2 py-3 bg-[#FFFFFF] text-[#111111] border-2 border-transparent shadow-sm rounded-xl font-bold text-[16px] hover:bg-gray-50 min-h-[48px]" onClick={onSuccess}>
                         <CheckCircle size={20} className="text-green-600" /> Éxito
                     </button>
-                    <button className="flex justify-center items-center gap-2 py-3 bg-[#FFFFFF] text-[#111111] border-2 border-transparent shadow-sm rounded-xl font-bold text-[18px] hover:bg-gray-50 min-h-[48px]" onClick={onFail}>
+                    <button className="flex justify-center items-center gap-2 py-3 bg-[#FFFFFF] text-[#111111] border-2 border-transparent shadow-sm rounded-xl font-bold text-[16px] hover:bg-gray-50 min-h-[48px]" onClick={onFail}>
                         <XCircle size={20} className="text-red-600" /> Fallar
                     </button>
                 </div>

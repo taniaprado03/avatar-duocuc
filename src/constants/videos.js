@@ -13,7 +13,7 @@ const VIDEOS = {
     NO_ENTENDI: '/videos/no_entendi.mp4',
     PROCESANDO: '/videos/procesando.mp4',
     LIMITE_TRAMITES: '/videos/limite_tramites.mp4',
-    IDLE: '/videos/reposo_deteccion.mp4',
+    IDLE: '/videos/inactividad_login.mp4',
 };
 
 export default VIDEOS;

@@ -83,20 +83,20 @@ export default function AccessibilityMenu({ onComplete, currentSettings, onSetti
                                 aria-pressed={isActive}
                                 className={`flex items-center gap-5 px-6 py-5 rounded-xl border-2 transition-all text-left min-h-[80px] ${
                                     isActive
-                                        ? 'border-duoc-blue bg-duoc-blue/5'
+                                        ? 'border-[#111111] bg-gray-100'
                                         : 'border-gray-200 bg-white hover:border-gray-300'
                                 }`}
                             >
                                 <div className={`shrink-0 flex items-center justify-center w-14 h-14 rounded-xl ${
-                                    isActive ? 'bg-duoc-blue text-white' : 'bg-gray-100 text-[#111111]'
+                                    isActive ? 'bg-[#111111] text-white' : 'bg-gray-200 text-[#000000]'
                                 }`}>
                                     {opt.icon}
                                 </div>
                                 <div className="flex-1">
-                                    <p className={`font-black text-[20px] leading-tight ${isActive ? 'text-duoc-blue' : 'text-[#111111]'}`}>
+                                    <p className={`font-black text-[20px] leading-tight text-[#111111]`}>
                                         {opt.label}
                                     </p>
-                                    <p className="text-[15px] text-gray-500 mt-1 font-medium">
+                                    <p className="text-[15px] text-gray-700 mt-1 font-semibold">
                                         {opt.description}
                                     </p>
                                 </div>

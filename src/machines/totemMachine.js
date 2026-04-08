@@ -160,6 +160,7 @@ export function transition(currentState, event, context) {
             switch (event.type) {
                 case EVENTS.SELECT_OPTION: {
                     const option = event.option;
+                    newContext.subState = null; // ALWAYS clear subState on successful action
                     if (option === 0) {
                         // En la Fase 1 ya no da ticket inmediato. Pasa a Sub-Menú de Especialidad.
                         return { state: STATES.SUB_MENU_ASESOR, context: newContext };
@@ -173,6 +174,7 @@ export function transition(currentState, event, context) {
                 }
                 case EVENTS.NOT_UNDERSTOOD:
                     newContext.subState = 'not_understood';
+                    newContext.errorTick = Date.now();
                     return { state: STATES.MENU, context: newContext };
                 case EVENTS.EXIT:
                     return { state: STATES.GOODBYE, context: newContext };
@@ -187,7 +189,9 @@ export function transition(currentState, event, context) {
         case STATES.SUB_MENU_ASESOR:
             switch (event.type) {
                 case EVENTS.SELECT_ASESOR_SUB_OPTION: {
-                    newContext.ticketNumber = generateTicket(event.prefix);
+                    newContext.subState = null; // Clear subState
+                    newContext.asesorPrefix = event.prefix;
+                    newContext.ticketNumber = generateTicket(event.prefix); // fallback local
                     return { state: STATES.GOODBYE, context: newContext };
                 }
                 case EVENTS.EXIT:
@@ -197,6 +201,10 @@ export function transition(currentState, event, context) {
                     return { state: STATES.INACTIVITY, context: newContext };
                 case EVENTS.CONFIRM_NO: // Para volver al menú principal
                     return { state: STATES.MENU, context: newContext };
+                case EVENTS.NOT_UNDERSTOOD:
+                    newContext.subState = 'not_understood';
+                    newContext.errorTick = Date.now();
+                    return { state: STATES.SUB_MENU_ASESOR, context: newContext };
                 default:
                     return { state: currentState, context };
             }
@@ -224,6 +232,7 @@ export function transition(currentState, event, context) {
             switch (event.type) {
                 case EVENTS.EXECUTE_SUCCESS:
                     newContext.accionesExitosas += 1;
+                    newContext.documentoPdf = event.base64; // <-- AÑADIDO
                     newContext.subState = null;
                     return { state: STATES.RESULT, context: newContext };
                 case EVENTS.EXECUTE_FAIL:

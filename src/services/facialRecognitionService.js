@@ -135,7 +135,7 @@ export async function analyzeFace(videoElement) {
                 matched: true,
                 confidence: 1.0 - lowestDistance,
                 userId: bestMatch.id,
-                userData: { nombre: bestMatch.nombre, correo: bestMatch.correo }
+                userData: { nombre: bestMatch.nombre, rut: bestMatch.rut, correo: bestMatch.correo }
             };
         }
 
