@@ -1,0 +1,86 @@
+# ══════════════════════════════════════════════════════════════
+# TanIA — CI/CD: Deploy a QA
+# Se ejecuta automáticamente cuando hay push a la rama "develop"
+# ══════════════════════════════════════════════════════════════
+
+name: 🧪 Deploy a QA
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  # ── JOB 1: Validar que el código compila ──
+  build-check:
+    name: ✅ Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Instalar dependencias
+        run: npm ci
+
+      - name: 🔨 Build de producción
+        run: npm run build
+        env:
+          VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY_QA }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL_QA }}
+          VITE_SEDE: "San Bernardo"
+          VITE_SEDE_CODE: "SB"
+
+      - name: 📤 Subir build como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: tania-build-qa
+          path: dist/
+          retention-days: 7
+
+  # ── JOB 2: Notificación de resultado ──
+  notify:
+    name: 📬 Notificar resultado
+    runs-on: ubuntu-latest
+    needs: build-check
+    if: always()
+
+    steps:
+      - name: ✅ Build exitoso
+        if: needs.build-check.result == 'success'
+        run: |
+          echo "============================================"
+          echo "✅ TanIA QA Build EXITOSO"
+          echo "Rama: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Autor: ${{ github.actor }}"
+          echo "============================================"
+          echo "📋 Próximos pasos para el equipo de QA:"
+          echo "  1. Descargar el artefacto 'tania-build-qa'"
+          echo "  2. Probar en el servidor QA"
+          echo "  3. Si pasa → aprobar merge a main"
+
+      - name: ❌ Build fallido
+        if: needs.build-check.result == 'failure'
+        run: |
+          echo "============================================"
+          echo "❌ TanIA QA Build FALLIDO"
+          echo "Revisar los logs del job 'Build Check'"
+          echo "============================================"
+          exit 1

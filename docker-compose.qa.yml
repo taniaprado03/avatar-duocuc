@@ -1,0 +1,19 @@
+# ══════════════════════════════════════════════════════════════
+# TanIA — Docker Compose Override para QA
+# Uso: docker compose -f docker-compose.yml -f docker-compose.qa.yml up -d
+# ══════════════════════════════════════════════════════════════
+
+services:
+  frontend:
+    container_name: tania-frontend-qa
+    ports:
+      - "80:80"      # QA expone en puerto 80 (accesible por URL directa)
+    environment:
+      - NODE_ENV=qa
+
+  backend:
+    container_name: tania-backend-qa
+    ports:
+      - "8080:80"
+    environment:
+      - APP_ENV=qa

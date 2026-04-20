@@ -1,0 +1,47 @@
+# ══════════════════════════════════════════════════════════════
+# TanIA — Docker Compose (Desarrollo Local)
+# Levanta frontend + backend con un solo comando:
+#   docker compose up --build
+# ══════════════════════════════════════════════════════════════
+
+services:
+  # ── Frontend: React/Vite servido por Nginx ──
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_CLAUDE_API_KEY: ${VITE_CLAUDE_API_KEY}
+    container_name: tania-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - tania-network
+
+  # ── Backend: PHP + Apache + SQLite ──
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: tania-backend
+    ports:
+      - "8080:80"
+    volumes:
+      # Persistir la base de datos SQLite fuera del contenedor
+      - db_data:/var/www/html/data
+    restart: unless-stopped
+    networks:
+      - tania-network
+
+# ── Volúmenes persistentes ──
+volumes:
+  db_data:
+    driver: local
+
+# ── Red interna para comunicación entre contenedores ──
+networks:
+  tania-network:
+    driver: bridge

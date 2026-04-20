@@ -1,0 +1,42 @@
+# ══════════════════════════════════════════════════════════════
+# TanIA — Docker Ignore
+# Archivos que NO se copian al contenedor Docker
+# ══════════════════════════════════════════════════════════════
+
+# Dependencias (se instalan dentro del contenedor)
+node_modules/
+
+# Build local (se genera dentro del contenedor)
+dist/
+
+# Git
+.git/
+.gitignore
+
+# Entornos (se pasan como args o env_file)
+.env
+.env.local
+.env.prd
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (evitar recursión)
+docker-compose*.yml
+Dockerfile
+
+# Documentación (no necesaria en el contenedor)
+*.md
+*.docx
+avatar-docs/pantalla_espera/
+
+# Gemini AI
+.gemini/
