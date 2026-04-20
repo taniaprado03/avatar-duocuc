@@ -150,6 +150,47 @@ docker compose ps
 
 ---
 
+## Flujo de Trabajo con Git — Las 2 Ramas
+
+```
+main ────────────────────────────────────────────────► PRD (Vercel)
+  ▲                                                      automático
+  │ merge (aprobado por QA)
+  │
+develop ─── feature/mi-cambio ──► develop ────────────► QA (build check)
+              Pull Request                               automático
+```
+
+### Para el Equipo de Desarrollo:
+
+```powershell
+# 1. Siempre parte desde develop
+git checkout develop
+git pull origin develop
+
+# 2. Crea tu rama para trabajar
+git checkout -b feature/nombre-de-tu-cambio
+
+# 3. Trabaja, guarda cambios
+git add .
+git commit -m "feat: descripción de lo que hiciste"
+
+# 4. Sube tu rama
+git push origin feature/nombre-de-tu-cambio
+
+# 5. En GitHub: abre Pull Request → base: develop
+```
+
+### Para el Equipo de QA:
+
+Cuando el equipo de Desarrollo hace un Pull Request a `develop`:
+- GitHub Actions hace el build automáticamente
+- QA recibe el artefacto para probar
+- Si aprueba → se hace merge a `develop`
+- Cuando todos los cambios de un sprint están en `develop` → se hace merge a `main` → PRD
+
+---
+
 ## Solución de problemas comunes
 
 ### ❌ "docker: command not found"
