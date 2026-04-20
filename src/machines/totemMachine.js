@@ -191,7 +191,9 @@ export function transition(currentState, event, context) {
                 case EVENTS.SELECT_ASESOR_SUB_OPTION: {
                     newContext.subState = null; // Clear subState
                     newContext.asesorPrefix = event.prefix;
-                    newContext.ticketNumber = generateTicket(event.prefix); // fallback local
+                    if (event.ticketNumber) {
+                        newContext.ticketNumber = event.ticketNumber;
+                    }
                     return { state: STATES.GOODBYE, context: newContext };
                 }
                 case EVENTS.EXIT:
@@ -307,7 +309,3 @@ export function transition(currentState, event, context) {
     }
 }
 
-function generateTicket(prefix = 'ASE') {
-    const num = Math.floor(Math.random() * 900) + 100; // Ej: 104, 305
-    return `${prefix}-${num}`;
-}

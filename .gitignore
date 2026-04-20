@@ -1,6 +1,7 @@
 node_modules
 .env
 .env.local
+.env.prd
 dist/
 push_clean.log
 push_fails.log
@@ -9,3 +10,9 @@ push_fails2.log
 push3.log
 push.log
 push_error.txt
+
+# Docker
+db_data/
+
+# Documentos generados
+*.docx
