@@ -373,7 +373,14 @@ function App() {
             transcriptRef.current = '';
             if (prefix) {
                 const areaNombres = { ACA: 'Académico', PRA: 'Práctica', INC: 'Inclusión', FIN: 'Financiero' };
-                send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix });
+                const rut = context.userData?.rut || '00000000';
+                const nombre = context.userData?.nombre || 'Alumno';
+                try {
+                    const result = await createTicket(rut, nombre, prefix);
+                    send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix, ticketNumber: result.ticketNumber });
+                } catch {
+                    send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix });
+                }
             }
             else send({ type: EVENTS.NOT_UNDERSTOOD });
         } catch {
@@ -442,20 +449,10 @@ function App() {
             sendTicketEmail(context.userData, context.ticketNumber).catch(err => console.error("Error enviando ticket:", err));
         }
 
-        // Integración real con sistema de tickets (cittsb.cl)
-        if (context.ticketNumber && context.asesorPrefix) {
-            const rut = context.userData?.rut || '00000000';
-            const nombre = context.userData?.nombre || 'Alumno';
-            createTicket(rut, nombre, context.asesorPrefix)
-                .then(result => {
-                    if (result.success && result.ticketNumber) {
-                        console.log(`[GLPI] Ticket real creado: ${result.ticketNumber}`);
-                    }
-                })
-                .catch(err => console.error('[GLPI] Error creando ticket:', err));
-        }
-
-        const t = setTimeout(() => send({ type: EVENTS.VIDEO_ENDED }), 8000);
+        // Si hay ticket → 15 segundos para que el alumno lo lea y lo anote
+        // Si no hay ticket → 8 segundos de despedida normal
+        const duration = context.ticketNumber ? 15000 : 8000;
+        const t = setTimeout(() => send({ type: EVENTS.VIDEO_ENDED }), duration);
         return () => clearTimeout(t);
     }, [currentState, context.ticketNumber, context.userData]);
 
@@ -704,8 +701,18 @@ function App() {
                             ].map((area) => (
                                 <button
                                     key={area.id}
-                                    onClick={() => {
-                                        send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id });
+                                    onClick={async () => {
+                                        setIsProcessingVoice(true);
+                                        const rut = context.userData?.rut || '00000000';
+                                        const nombre = context.userData?.nombre || 'Alumno';
+                                        try {
+                                            const result = await createTicket(rut, nombre, area.id);
+                                            send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id, ticketNumber: result.ticketNumber });
+                                        } catch (e) {
+                                            send({ type: EVENTS.SELECT_ASESOR_SUB_OPTION, prefix: area.id });
+                                        } finally {
+                                            setIsProcessingVoice(false);
+                                        }
                                     }}
                                     className="group flex flex-col items-start gap-4 p-8 bg-white/10 hover:bg-white/20 backdrop-blur-xl border-2 border-white/20 hover:border-duoc-yellow rounded-[2.5rem] transition-all focus:outline-none focus:ring-4 focus:ring-duoc-yellow min-h-[170px]"
                                 >
@@ -824,20 +831,34 @@ function App() {
             case STATES.GOODBYE:
                 return (
                     <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto text-center">
-                        {/* El subtítulo se oculta en App.jsx para este estado buscando evitar redundancia */}
-                        <div className="flex flex-col items-center">
-                            <h3 className={`text-[3.5rem] font-black mb-4 drop-shadow-2xl text-white`}>
-                                ¡Ha sido un placer ayudarte!
-                            </h3>
-                            <p className={`font-black text-[1.8rem] animate-pulse text-white/80`}>Volviendo al inicio...</p>
-                        </div>
-                        
-                        {context.ticketNumber && (
-                            <div className={`flex flex-col items-center rounded-[2.5rem] p-10 shadow-2xl w-full max-w-2xl mt-8 mb-8 relative overflow-hidden border-2 border-white/20 backdrop-blur-md bg-black/20`}>
-                                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-duoc-yellow to-duoc-yellow-dark" />
-                                <span className={`tracking-[0.2em] font-bold uppercase text-[15px] mb-4 text-white/70`}>Tu ticket de atención</span>
-                                <div className={`text-[6rem] font-black drop-shadow-md tracking-widest text-duoc-yellow`}>{context.ticketNumber}</div>
-                                <span className={`mt-6 font-semibold text-[22px] text-white/90`}>Presenta este número en el mesón de atención</span>
+
+                        {/* CASO 1: Hay ticket — el número es lo más importante */}
+                        {context.ticketNumber ? (
+                            <>
+                                {/* Ticket grande y prominente */}
+                                <div className="flex flex-col items-center rounded-[2.5rem] p-10 shadow-2xl w-full max-w-2xl mb-6 relative overflow-hidden border-4 border-duoc-yellow/60 backdrop-blur-md bg-black/40">
+                                    <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-duoc-yellow to-duoc-yellow-dark" />
+                                    <span className="tracking-[0.2em] font-bold uppercase text-[18px] mb-2 text-white/80">🎫 Tu número de atención es</span>
+                                    <div className="text-[8rem] font-black drop-shadow-md tracking-widest text-duoc-yellow leading-none my-4">
+                                        {context.ticketNumber}
+                                    </div>
+                                    <span className="font-bold text-[24px] text-white mb-2">Preséntate en el mesón de atención</span>
+                                    <span className="font-medium text-[18px] text-white/70">Guarda o anota este número</span>
+                                </div>
+
+                                {/* Mensaje de despedida más pequeño */}
+                                <h3 className="text-[2.5rem] font-black drop-shadow-2xl text-white mb-2">
+                                    ¡Ha sido un placer ayudarte!
+                                </h3>
+                                <p className="font-bold text-[1.4rem] animate-pulse text-white/70">Volviendo al inicio en unos segundos...</p>
+                            </>
+                        ) : (
+                            /* CASO 2: No hay ticket — despedida normal */
+                            <div className="flex flex-col items-center">
+                                <h3 className="text-[3.5rem] font-black mb-4 drop-shadow-2xl text-white">
+                                    ¡Ha sido un placer ayudarte!
+                                </h3>
+                                <p className="font-black text-[1.8rem] animate-pulse text-white/80">Volviendo al inicio...</p>
                             </div>
                         )}
                     </div>

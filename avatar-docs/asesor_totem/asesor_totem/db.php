@@ -9,7 +9,8 @@ class Database
     {
         try {
             // Path to the SQLite database file
-            $dbPath = __DIR__ . '/database.sqlite';
+            // Usamos /data/ que es un volumen Docker con permisos de escritura para www-data
+            $dbPath = '/var/www/html/data/database.sqlite';
             $this->pdo = new PDO("sqlite:" . $dbPath);
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);

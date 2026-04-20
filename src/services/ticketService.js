@@ -29,6 +29,14 @@ const AREA_TO_MOTIVO = {
 export async function createTicket(rut, nombre, areaPrefix) {
     const motivo = AREA_TO_MOTIVO[areaPrefix] || 'Consulta General';
 
+    // Función auxiliar para generar ticket fallback siempre que se necesite
+    function generarFallback(razon) {
+        const num = Math.floor(Math.random() * 900) + 100;
+        const fallbackTicket = `${areaPrefix}-${num}`;
+        console.warn(`[TicketService] Fallback (${razon}):`, fallbackTicket);
+        return { success: true, ticketNumber: fallbackTicket, fallback: true };
+    }
+
     try {
         console.log(`[TicketService] Creando ticket: ${nombre} (${rut}) - ${motivo}`);
 
@@ -40,31 +48,21 @@ export async function createTicket(rut, nombre, areaPrefix) {
 
         const data = await response.json();
 
-        if (response.ok && data.success) {
-            console.log(`[TicketService] Ticket creado: ${data.ticketNumber}`);
+        if (response.ok && data.success && data.ticketNumber) {
+            console.log(`[TicketService] ✅ Ticket creado en BD: ${data.ticketNumber}`);
             return {
                 success: true,
                 ticketNumber: data.ticketNumber,
                 ticketId: data.ticketId
             };
         } else {
-            console.warn('[TicketService] Error del servidor:', data);
-            return {
-                success: false,
-                error: data.message || 'Error al crear ticket'
-            };
+            // El servidor respondió pero con error → fallback con número visible
+            console.warn('[TicketService] Servidor respondió con error:', data);
+            return generarFallback('respuesta-servidor-error');
         }
     } catch (error) {
-        console.error('[TicketService] Error de red:', error);
-        // Fallback: generar ticket local si el servidor no responde
-        const num = Math.floor(Math.random() * 900) + 100;
-        const fallbackTicket = `${areaPrefix}-${num}`;
-        console.log(`[TicketService] Usando fallback local: ${fallbackTicket}`);
-        return {
-            success: true,
-            ticketNumber: fallbackTicket,
-            fallback: true
-        };
+        // Red caída o servidor no disponible → fallback con número visible
+        return generarFallback('error-de-red');
     }
 }
 
