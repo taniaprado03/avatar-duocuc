@@ -1,0 +1,58 @@
+# ══════════════════════════════════════════════════════════════
+# TanIA — CI/CD: Verificación de rama dev
+# Se ejecuta cuando el equipo hace push a "dev"
+# Sirve para que el equipo DEV vea si su código compila antes de pasar a QA
+# ══════════════════════════════════════════════════════════════
+
+name: 🛠️ Check DEV
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev        # PRs de feature/* → dev
+
+jobs:
+  build-check:
+    name: ✅ Verificar que compila (DEV)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Instalar dependencias
+        run: npm ci
+
+      - name: 🔨 Build de verificación
+        run: npm run build
+        env:
+          VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY_QA }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_EMAILJS_PUBLIC_KEY: ${{ secrets.VITE_EMAILJS_PUBLIC_KEY }}
+          VITE_BACKEND_URL: http://localhost:8080
+          VITE_SEDE: "San Bernardo"
+          VITE_SEDE_CODE: "SB"
+
+      - name: ✅ Build OK — Puedes hacer PR a develop (QA)
+        run: |
+          echo "============================================"
+          echo "✅ Código listo para pasar a QA"
+          echo "Rama: ${{ github.ref_name }}"
+          echo "Autor: ${{ github.actor }}"
+          echo ""
+          echo "Próximo paso: Abrir Pull Request de dev → develop"
+          echo "============================================"

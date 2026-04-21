@@ -150,23 +150,28 @@ docker compose ps
 
 ---
 
-## Flujo de Trabajo con Git — Las 2 Ramas
+## Flujo de Trabajo con Git — Las 3 Ramas
 
 ```
-main ────────────────────────────────────────────────► PRD (Vercel)
-  ▲                                                      automático
-  │ merge (aprobado por QA)
-  │
-develop ─── feature/mi-cambio ──► develop ────────────► QA (build check)
-              Pull Request                               automático
+feature/xxx ──► dev ──────────► develop ──────────► main
+                 ↓                  ↓                  ↓
+             DEV check          QA testing          PRD (Vercel)
+             (automático)       (manual)            (automático)
 ```
+
+| Rama | Ambiente | Quién trabaja aquí |
+|---|---|---|
+| `feature/xxx` | Tu PC local (Docker) | Cada desarrollador |
+| `dev` | Integración DEV · CI verifica build | Todo el equipo DEV |
+| `develop` | Ambiente QA · equipo QA prueba | Equipo QA aprueba |
+| `main` | Producción (Vercel + servidor) | Solo Tania autoriza |
 
 ### Para el Equipo de Desarrollo:
 
 ```powershell
-# 1. Siempre parte desde develop
-git checkout develop
-git pull origin develop
+# 1. Siempre parte desde dev (NO desde main ni develop)
+git checkout dev
+git pull origin dev
 
 # 2. Crea tu rama para trabajar
 git checkout -b feature/nombre-de-tu-cambio
@@ -178,16 +183,16 @@ git commit -m "feat: descripción de lo que hiciste"
 # 4. Sube tu rama
 git push origin feature/nombre-de-tu-cambio
 
-# 5. En GitHub: abre Pull Request → base: develop
+# 5. En GitHub: abre Pull Request → base: dev
+#    GitHub Actions verifica que compile automáticamente
 ```
 
-### Para el Equipo de QA:
+### Una vez que QA aprueba:
 
-Cuando el equipo de Desarrollo hace un Pull Request a `develop`:
-- GitHub Actions hace el build automáticamente
-- QA recibe el artefacto para probar
-- Si aprueba → se hace merge a `develop`
-- Cuando todos los cambios de un sprint están en `develop` → se hace merge a `main` → PRD
+```
+dev  →  Pull Request  →  develop  (lo aprueba el líder)
+develop  →  Pull Request  →  main     (lo aprueba Tania)
+```
 
 ---
 
