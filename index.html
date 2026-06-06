@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tótem de autoservicio DUOC UC con avatar virtual Leonor" />
+    <title>DUOC UC — Tótem de Autoservicio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+    function scaleTotem() {
+      const base = { w: 1080, h: 1920 };
+      const scale = Math.min(window.innerWidth / base.w, window.innerHeight / base.h);
+      const el = document.getElementById('root');
+      el.style.width = base.w + 'px';
+      el.style.height = base.h + 'px';
+      el.style.transform = `scale(${scale})`;
+      el.style.transformOrigin = 'top left';
+      el.style.position = 'fixed';
+      el.style.left = `${(window.innerWidth - base.w * scale) / 2}px`;
+      el.style.top = `${(window.innerHeight - base.h * scale) / 2}px`;
+    }
+    window.addEventListener('resize', scaleTotem);
+    scaleTotem();
+    </script>
+  </body>
+</html>

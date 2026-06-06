@@ -1,0 +1,291 @@
+:root {
+    --duoc-blue: #003D7A;
+    --duoc-yellow: #FFB800;
+    --duoc-gray: #f4f7f9;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background-color: var(--duoc-gray);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header Institucional */
+header {
+    background-color: var(--duoc-blue);
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 6px solid var(--duoc-yellow);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sección Izquierda: Atención Actual */
+.serving-now {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.serving-now h2 {
+    color: var(--duoc-blue);
+    margin-top: 0;
+    font-size: 24px;
+}
+
+.big-ticket {
+    font-size: 150px;
+    font-weight: bold;
+    color: var(--duoc-blue);
+    margin: 20px 0;
+}
+
+.student-details {
+    font-size: 28px;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.student-details strong {
+    color: var(--duoc-blue);
+    display: block;
+    font-size: 36px;
+}
+
+/* Sección Derecha: Lista de Espera */
+.queue-list {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.queue-list h3 {
+    color: var(--duoc-blue);
+    border-bottom: 2px solid var(--duoc-gray);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.ticket-card {
+    background: #fff;
+    border: 2px solid #eee;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.2s;
+}
+
+.ticket-card:hover {
+    border-color: var(--duoc-yellow);
+}
+
+.ticket-info span {
+    display: block;
+    font-weight: bold;
+    font-size: 22px;
+    color: var(--duoc-blue);
+}
+
+.ticket-info small {
+    color: #666;
+    font-size: 14px;
+}
+
+/* Botones */
+.btn-call {
+    background-color: var(--duoc-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-finish {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 20px 50px;
+    border-radius: 12px;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-reset {
+    background: transparent;
+    color: white;
+    border: 1px solid white;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 12px;
+}
+
+/* Estilo para cuando no hay nadie */
+.empty-state {
+    color: #bbb;
+    font-style: italic;
+    text-align: center;
+    margin-top: 50px;
+}
+
+/* Clase para cuando el asesor está ocupado */
+.btn-disabled {
+    background-color: #ccc !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* Logo en setup screen */
+.logo-setup {
+    height: 80px;
+    filter: brightness(0) invert(1);
+}
+
+/* Logo en header */
+.logo-header {
+    height: 40px;
+    filter: brightness(0) invert(1);
+}
+
+/* Etiqueta de mesa en header */
+#labelMesa {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Botón cambiar mesa */
+.btn-change-mesa {
+    background: none;
+    color: white;
+    border: 1px solid white;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+/* Texto vacío de atención */
+.empty-attention {
+    color: #999;
+    font-size: 20px;
+}
+
+/* Setup Screen */
+.setup-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--duoc-blue);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.setup-screen select {
+    padding: 15px;
+    font-size: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    width: 300px;
+}
+
+.btn-start {
+    background: var(--duoc-yellow);
+    color: var(--duoc-blue);
+    border: none;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-weight: bold;
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+/* Mesa Badge */
+.mesa-badge {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: var(--duoc-blue);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: bold;
+}
+
+/* Actualización de serving-now para posición relativa */
+.serving-now {
+    position: relative;
+}
+
+/* Actualización de big-ticket para multi-puesto */
+.big-ticket {
+    font-size: 130px;
+    margin: 10px 0;
+}
+
+/* Actualización de student-details */
+.student-details {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.student-details strong {
+    font-size: 32px;
+    color: #000;
+}
+
+/* Actualización de btn-call */
+.btn-call {
+    padding: 10px 15px;
+}
+
+.btn-call:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Actualización de btn-finish */
+.btn-finish {
+    background: #28a745;
+    padding: 20px 40px;
+    font-size: 20px;
+}
